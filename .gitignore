@@ -1,0 +1,6 @@
+# compiled pyfiles
+*.pyc
+*.pyo
+
+# default sqlite db
+db.sqlite3
