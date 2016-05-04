@@ -1,26 +1,57 @@
 Getting Started
 ===============
 
-To get started, have django create the db:
+There are two ways to get things started, docker-compose and manually.
+
+Docker Compose
+--------------
+
+Docker should already be installed to go this route.
+
+```
+pip install -r docker-compose-requirements.txt
+docker-compose up
+```
+
+Now, when running commands, you should run them with `docker-compose run web <command>`
+
+Manual Setup
+------------
+
+This application requires postgres and elasticsearch to be installed by default. It
+assumes that postgres is running locally, and user 'pulp' can access a database of
+the same name with no password. Elasticsearch is expected to be running locally on
+port 9200.
+
+These options can be changed by creating a `settings_local.py` file next to `settings.py`,
+containing your own search and db settings.
+
+Populate the DB
+---------------
+
+To get started, have django initialize the db:
+
 ```
 python manage.py migrate --run-syncdb
 ```
-Now, populate it.
 
-In an interpreter, you can "from populate import *", or you can set PYTHONSTARTUP and have python
-run the populate script for you before starting the interpreter, e.g.
+If running in docker-compose, you'll need to restart the web server at this point:
+
 ```
-PYTHONSTARTUP=populate.py python manage.py shell
+docker-compose restart web
 ```
+
+Now, fire up a shell and populate it!
+
+In an interpreter, `from populate import *`. To start the interpreter, `python manager.py shell`.
+
 If you have ipython installed, the django shell will use it. (You should have ipython installed)
-
-To reset, `rm db.sqlite3` and restart your interpreter.
 
 Fun Queries & Notable Objects
 =============================
 
 The populate script should be idempotent, and will ensure that the objects created within it exist
-prior to using them in an interpreter. The script creates a few basic Repository and ContenUnit
+prior to using them in an interpreter. The script creates a few basic Repository and ContentUnit
 instances, so take a peek in there to see what it's doing to find out everything that's available.
 
 Repository Queries

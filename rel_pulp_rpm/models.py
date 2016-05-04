@@ -6,7 +6,8 @@ from rel_pulp.models import ContentUnit
 
 
 class NEVRAPackage(ContentUnit):
-    KEY_FIELDS = ('name', 'epoch', 'version', 'release', 'arch', 'checksum', 'checksumtype')
+    NEVRA_FIELDS = ('name', 'epoch', 'version', 'release', 'arch')
+    KEY_FIELDS = NEVRA_FIELDS + ('checksum', 'checksumtype')
 
     name = models.CharField(max_length=63)
     epoch = models.CharField(max_length=63)
@@ -21,7 +22,7 @@ class NEVRAPackage(ContentUnit):
         abstract = True
 
     def __str__(self):
-        field_values = [getattr(self, field) for field in self.KEY_FIELDS]
+        field_values = [getattr(self, field) for field in self.NEVRA_FIELDS]
         return '-'.join(field_values)
 
 class RPM(NEVRAPackage):

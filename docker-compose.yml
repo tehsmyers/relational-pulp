@@ -1,0 +1,25 @@
+version: '2'
+services:
+  db:
+    image: postgres
+    environment:
+      POSTGRES_USER: pulp
+    ports:
+      - "5432:5432"
+  search:
+    image: elasticsearch
+    ports:
+      - "9200:9200"
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      # used in django settings to connect to the right endpoints
+      DOCKER_COMPOSE: yep
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - search

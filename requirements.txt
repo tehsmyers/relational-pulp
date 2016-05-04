@@ -1,0 +1,7 @@
+Django
+django-tastypie
+# haystack is for search, you'll need elasticsearch installed for this to work
+django-haystack
+psycopg2
+elasticsearch
+ipython

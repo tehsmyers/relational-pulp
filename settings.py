@@ -12,9 +12,16 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import os
 
+# docker-compose switches
+if os.environ.get('DOCKER_COMPOSE'):
+    DB_HOST = 'db'
+    ES_HOST = 'search'
+else:
+    DB_HOST = ES_HOST = 'localhost'
+ES_URL = 'http://{host}:9200/'.format(host=ES_HOST)
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.9/howto/deployment/checklist/
@@ -31,12 +38,16 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    # django stuff
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # third-party
+    'haystack',
+    # pulp
     'rel_pulp',
 ]
 
@@ -91,9 +102,19 @@ WSGI_APPLICATION = 'wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'pulp',
+        'HOST': DB_HOST,
+        'USER': 'pulp',
     }
+}
+
+HAYSTACK_CONNECTIONS = {
+    'default': {
+        'ENGINE': 'haystack.backends.elasticsearch_backend.ElasticsearchSearchEngine',
+        'URL': ES_URL,
+        'INDEX_NAME': 'pulp',
+    },
 }
 
 
@@ -134,3 +155,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# override default settings in the local settings file
+try:
+    from settings_local import *
+except ImportError:
+    pass
