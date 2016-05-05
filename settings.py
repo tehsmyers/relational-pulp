@@ -117,6 +117,10 @@ HAYSTACK_CONNECTIONS = {
     },
 }
 
+# RealTimeSignalProcessor is really the ReallySlowSignalProcessor, but it works
+# well for a demo. We'll need to put together a system to hook into model signals
+# and queue updates to the search index as async tasks.
+HAYSTACK_SIGNAL_PROCESSOR = 'haystack.signals.RealtimeSignalProcessor'
 
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators

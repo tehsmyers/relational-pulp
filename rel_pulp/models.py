@@ -75,5 +75,3 @@ class ContentUnit(models.Model):
 
     def __repr__(self):
         return '<{} "{}">'.format(type(self).__name__, str(self))
-
-
