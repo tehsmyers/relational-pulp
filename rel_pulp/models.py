@@ -59,7 +59,8 @@ class ContentUnit(models.Model):
     def cast(self):
         return getattr(self, self.content_type)
 
-    def generic_unit(self):
+    @property
+    def content_unit(self):
         # This field name is hardcoded, but should be derived by inspecting the
         # unit instance to get the name of the contentunit one-to-one reverse
         # relation

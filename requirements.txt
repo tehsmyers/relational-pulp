@@ -7,3 +7,4 @@ git+https://github.com/django-haystack/django-haystack.git
 psycopg2
 elasticsearch
 ipython
+coolname

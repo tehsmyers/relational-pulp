@@ -9,7 +9,7 @@ class NEVRAPackage(ContentUnit):
     NEVRA_FIELDS = ('name', 'epoch', 'version', 'release', 'arch')
     KEY_FIELDS = NEVRA_FIELDS + ('checksum', 'checksumtype')
 
-    name = models.CharField(max_length=63)
+    name = models.CharField(max_length=127)
     epoch = models.CharField(max_length=63)
     version = models.CharField(max_length=63)
     release = models.CharField(max_length=63)
