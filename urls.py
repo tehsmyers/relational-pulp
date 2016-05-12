@@ -1,4 +1,4 @@
-"""rel_pulp URL Configuration
+"""pulp URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/1.9/topics/http/urls/
@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.conf.urls import url, include
 from tastypie.api import Api
-from rel_pulp import resources
+from pulp import resources
 
 v3_api = Api(api_name='v3')
 v3_api.register(resources.ContentUnitResource())

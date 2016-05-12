@@ -2,7 +2,7 @@ from tastypie import fields
 from tastypie.authorization import Authorization
 from tastypie.resources import ModelResource, ALL_WITH_RELATIONS
 
-from rel_pulp.models import ContentUnit, Repository
+from pulp.models import ContentUnit, Repository
 
 
 class ContentUnitResource(ModelResource):

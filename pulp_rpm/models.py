@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from django.db import models
 
-from rel_pulp.models import ContentUnit
+from pulp.models import ContentUnit
 
 
 class NEVRAPackage(ContentUnit):

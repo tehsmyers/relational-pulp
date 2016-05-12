@@ -1,6 +1,6 @@
 from haystack import indexes
-from rel_pulp.search_indexes import ContentUnitIndex
-from rel_pulp_rpm.models import RPM, SRPM
+from pulp.search_indexes import ContentUnitIndex
+from pulp_rpm.models import RPM, SRPM
 
 
 class NEVRAUnitIndexBase(ContentUnitIndex):

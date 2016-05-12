@@ -4,4 +4,4 @@ from django.apps import AppConfig
 
 
 class RelPulpRpmConfig(AppConfig):
-    name = 'rel_pulp_rpm'
+    name = 'pulp_rpm'

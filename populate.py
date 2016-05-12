@@ -3,8 +3,8 @@ import sys
 
 import coolname
 
-from rel_pulp import models as platform
-from rel_pulp_rpm import models as rpm
+from pulp import models as platform
+from pulp_rpm import models as rpm
 
 # minimum number of things to cram into the db
 num_repos = 10
