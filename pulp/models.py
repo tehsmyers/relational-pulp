@@ -1,7 +1,12 @@
+import uuid
 from django.db import models
 
 
-class Repository(models.Model):
+class UUIDModel(models.Model):
+    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+
+class Repository(UUIDModel):
     repo_id = models.CharField(max_length=255)
 
     def __str__(self):
@@ -26,7 +31,7 @@ ContentUnitManager = models.Manager.from_queryset(ContentUnitQuerySet)
 # ContentUnit is the "master" model for all content units, and tracks
 # the content unit repository relationships as well as the content unit
 # type, which is derived from its implementing subclass.
-class ContentUnit(models.Model):
+class ContentUnit(UUIDModel):
     repositories = models.ManyToManyField(Repository, related_name='units')
     content_type = models.CharField(max_length=15)
 
