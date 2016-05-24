@@ -2,12 +2,12 @@
 
 # Once the DB is up, populate the DB and regenerate the search index
 
-until psql -h db -U pulp -c '\conninfo'
+until psql -h localhost -U pulp -c '\conninfo'
 do
     sleep 5
 done
 
-until curl http://search:9200/;
+until curl http://127.0.0.1:9200/;
 do
     sleep 5
 done

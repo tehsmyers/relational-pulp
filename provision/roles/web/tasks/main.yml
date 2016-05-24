@@ -1,0 +1,23 @@
+---
+- name: Install virtualenv
+  dnf: name=python3-virtualenv state=latest
+
+- name: Install develoment tools
+  dnf: name={{ item }} state=latest
+  with_items:
+  - "@Development Tools"
+  - redhat-rpm-config
+
+- name: Create rel-pulp virtualenv
+  become: true
+  become_user: vagrant
+  command: virtualenv-3.4 rel-pulp
+  args:
+    chdir: ~
+    creates: ~/rel-pulp
+  
+
+- name: Pip install django and modules
+  become: true
+  become_user: vagrant
+  pip: requirements=~/devel/relational-pulp/requirements.txt virtualenv=~/rel-pulp virtualenv_command=virtualenv-3.4

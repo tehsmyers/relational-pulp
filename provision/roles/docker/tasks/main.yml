@@ -1,0 +1,12 @@
+---
+- name: Enable Docker Repo
+  copy: src=docker.repo dest=/etc/yum.repos.d/docker.repo owner=root group=root mode=644
+
+- name: Install Docker, docker-compose
+  dnf: name={{ item }} state=latest
+  with_items:
+    - docker-engine
+    - docker-compose
+
+- name: Start Docker Service
+  service: name=docker state=started enabled=yes
