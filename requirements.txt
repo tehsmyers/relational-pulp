@@ -1,4 +1,4 @@
-Django
+Django>=1.8,<1.9
 django-tastypie
 # haystack is for search, you'll need elasticsearch installed for this to work
 # unfortunately we need to pull from master until this fix is released in 2.5:
