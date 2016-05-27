@@ -12,7 +12,7 @@ do
     sleep 5
 done
 
-python manage.py migrate --run-syncdb
+python manage.py migrate
 cat populate.py | python manage.py shell >/dev/null
 python manage.py update_index -r
 
