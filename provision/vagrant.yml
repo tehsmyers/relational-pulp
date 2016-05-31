@@ -1,0 +1,22 @@
+- hosts: relpulp
+  become: true
+  become_user: root
+  gather_facts: false
+  pre_tasks:
+    - name: install python and deps for ansible modules
+      raw: dnf install -y python2 python2-dnf libselinux-python
+
+    - name: Gather facts
+      setup:
+
+    - name: Ensure vagrant in wheel
+      user: name=vagrant groups=wheel append=yes
+
+    - name: upgrade all packages
+      dnf: name=* state=latest
+
+  roles:
+#    - docker
+    - db
+    - web
+    - elasticsearch

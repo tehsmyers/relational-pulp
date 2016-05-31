@@ -17,7 +17,8 @@ if os.environ.get('DOCKER_COMPOSE'):
     DB_HOST = 'db'
     ES_HOST = 'search'
 else:
-    DB_HOST = ES_HOST = 'localhost'
+    DB_HOST = "localhost"
+    ES_HOST = "127.0.0.1"
 ES_URL = 'http://{host}:9200/'.format(host=ES_HOST)
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)

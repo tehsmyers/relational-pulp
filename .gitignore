@@ -4,3 +4,11 @@
 
 # default sqlite db
 db.sqlite3
+
+# intellij
+.idea/
+
+# Vagrant
+.vagrant/
+
+Vagrantfile

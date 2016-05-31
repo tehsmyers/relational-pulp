@@ -1,0 +1,8 @@
+---
+- name: Install elasticsearch
+  dnf: name=elasticsearch state=latest
+
+- name: Start/Enable elasticsearch service
+  service: name=elasticsearch state=started enabled=yes
+
+
