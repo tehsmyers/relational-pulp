@@ -18,16 +18,16 @@ class NEVRAPackage(ContentUnit):
     checksumtype = models.CharField(max_length=63)
 
     class Meta:
-        # don't make a table for this, we just want the fields
         abstract = True
 
     def __str__(self):
         field_values = [getattr(self, field) for field in self.NEVRA_FIELDS]
         return '-'.join(field_values)
 
+
 class RPM(NEVRAPackage):
-    _content_type_id = 'rpm'
+    pass
 
 
 class SRPM(NEVRAPackage):
-    _content_type_id = 'srpm'
+    pass

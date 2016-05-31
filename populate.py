@@ -8,7 +8,7 @@ from pulp_rpm import models as rpm
 
 # minimum number of things to cram into the db
 num_repos = 10
-num_rpm = 1000
+num_rpm = 100
 num_srpm = 10
 
 # not DRY at all...

@@ -7,14 +7,16 @@ do
     sleep 5
 done
 
-until curl http://search:9200/;
-do
-    sleep 5
-done
+# Django 1.9 handling (also holy crap Django this sort of change warrants 2.0)
+# This assumes that syncdb will only fail if Django 1.9 is installed.
+if python manage.py syncdb --noinput
+then
+    python manage.py migrate --noinput
+else
+    python manage.py migrate --run-syncdb
+fi
 
-python manage.py migrate --run-syncdb
 cat populate.py | python manage.py shell >/dev/null
-python manage.py update_index -r
 
 echo "Starting webserver"
 python manage.py runserver 0.0.0.0:8000

@@ -14,13 +14,10 @@ Including another URLconf
     2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
 """
 from django.conf.urls import url, include
-from tastypie.api import Api
-from pulp import resources
 
-v3_api = Api(api_name='v3')
-v3_api.register(resources.ContentUnitResource())
-v3_api.register(resources.RepositoryResource())
+from pulp import views
+from pulp_rpm import views as rpm_views
 
 urlpatterns = [
-    url(r'^api/', include(v3_api.urls)),
+    url(r'^api/v3/', include(views.router.urls)),
 ]

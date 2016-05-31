@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # third-party
-    'haystack',
+    'rest_framework',
     # pulp
     'pulp',
 ]
@@ -96,6 +96,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'wsgi.application'
 
+REST_FRAMEWORK = {
+    'URL_FIELD_NAME': '_href',
+}
 
 # Database
 # https://docs.djangoproject.com/en/1.9/ref/settings/#databases
@@ -108,16 +111,6 @@ DATABASES = {
         'USER': 'pulp',
     }
 }
-
-HAYSTACK_CONNECTIONS = {
-    'default': {
-        'ENGINE': 'haystack.backends.elasticsearch_backend.ElasticsearchSearchEngine',
-        'URL': ES_URL,
-        'INDEX_NAME': 'pulp',
-    },
-}
-
-TASTYPIE_DEFAULT_FORMATS = ['json']
 
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
@@ -159,6 +152,6 @@ STATIC_URL = '/static/'
 
 # override default settings in the local settings file
 try:
-    from settings_local import *
+    from settings_local import *  # NOQA
 except ImportError:
     pass

@@ -1,10 +1,5 @@
-Django
-django-tastypie
-# haystack is for search, you'll need elasticsearch installed for this to work
-# unfortunately we need to pull from master until this fix is released in 2.5:
-# - https://github.com/django-haystack/django-haystack/pull/1313
-git+https://github.com/django-haystack/django-haystack.git
+Django>=1.8,<1.9
+djangorestframework
 psycopg2
-elasticsearch
 ipython
 coolname
