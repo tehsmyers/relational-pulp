@@ -1,0 +1,10 @@
+- name: Install develoment tools
+  dnf: name={{item}} state=latest
+  with_items:
+  - "@Development Tools"
+  - redhat-rpm-config
+  - python3-virtualenv
+  - python-virtualenvwrapper
+
+- name: Install bashrc
+  copy: src=bashrc dest=/home/{{ansible_user}}/.bashrc

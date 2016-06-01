@@ -1,0 +1,30 @@
+- name: Create rel-pulp virtualenv
+  become: true
+  become_user: vagrant
+  shell: "source /usr/bin/virtualenvwrapper.sh && mkvirtualenv -p /usr/bin/python3 rel-pulp"
+  args:
+    creates: ~/.virtualenvs/rel-pulp
+
+- name: Configure virtualenv project
+  copy: src=venv-project dest=/home/vagrant/.virtualenvs/rel-pulp/.project
+
+- name: Pip install django and modules
+  become: true
+  become_user: vagrant
+  pip:
+    requirements: ~/devel/relational-pulp/requirements.txt
+    virtualenv: ~/.virtualenvs/rel-pulp
+    virtualenv_command: virtualenv-3.4
+
+- name: Initialize and populate database
+  become: true
+  become_user: vagrant
+  shell: "source ~/.virtualenvs/rel-pulp/bin/activate && ./db-init.sh"
+  args:
+    chdir: ~/devel/relational-pulp
+
+- name: Install django runserver
+  copy: src=django-runserver.service dest=/etc/systemd/system/django-runserver.service
+
+- name: Start/Enable Django runserver
+  service: name=django-runserver state=restarted enabled=yes

@@ -17,6 +17,3 @@ else
 fi
 
 cat populate.py | python manage.py shell >/dev/null
-
-echo "Starting webserver"
-python manage.py runserver 0.0.0.0:8000

@@ -1,0 +1,10 @@
+[Unit]
+Description=Django runserver
+
+[Service]
+Type=simple
+User=vagrant
+ExecStart=/home/vagrant/.virtualenvs/rel-pulp/bin/python /home/vagrant/devel/relational-pulp/manage.py runserver 0.0.0.0:8000
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,4 @@
----
-
-- name: Install postgresql
+- name: Install postgresql and python bindings
   dnf: name={{ item }} state=latest
   with_items:
   - postgresql-server
@@ -11,14 +9,15 @@
 - name: Initialize postgresql
   command: postgresql-setup --initdb --unit postgresql creates=/var/lib/pgsql/data/postgresql.conf
 
-- name: Trust all users (DEV ONLY)
+- name: Trust local users only
   copy: src=pg_hba.conf dest=/var/lib/pgsql/data/pg_hba.conf owner=postgres group=postgres mode=600
 
 - name: Start/Enable postgresql service
-  service: name=postgresql state=started enabled=yes
+  service: name=postgresql state=restarted enabled=yes
 
 - name: Create the database
   postgresql_db: name=pulp login_user=postgres
 
 - name: Add pulp postgresql user
-  postgresql_user: db=pulp name=pulp priv=ALL state=present 
+  postgresql_user: db=pulp name=pulp priv=ALL state=present
+
