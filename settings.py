@@ -12,15 +12,6 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import os
 
-# docker-compose switches
-if os.environ.get('DOCKER_COMPOSE'):
-    DB_HOST = 'db'
-    ES_HOST = 'search'
-else:
-    DB_HOST = "localhost"
-    ES_HOST = "127.0.0.1"
-ES_URL = 'http://{host}:9200/'.format(host=ES_HOST)
-
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -108,7 +99,6 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'pulp',
-        'HOST': DB_HOST,
         'USER': 'pulp',
     }
 }
