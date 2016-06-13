@@ -10,5 +10,7 @@ db.sqlite3
 
 # Vagrant
 .vagrant/
-
 Vagrantfile
+
+# content files
+content/

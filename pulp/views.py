@@ -9,10 +9,12 @@ class RepositoryViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.RepositorySerializer
 
 
+# XXX DO NOT register ContentUnitViewSet with the router.
+# It's here to be subclasses by the specific unit types,
+# not to provide its own views. *Always* drive unit API
+# views to the specific type.
 class ContentUnitViewSet(viewsets.ModelViewSet):
-    queryset = models.ContentUnit.objects.all()
     serializer_class = serializers.ContentUnitSerializer
 
 router = routers.DefaultRouter()
 router.register(r'repositories', RepositoryViewSet)
-router.register(r'content', ContentUnitViewSet)

@@ -9,33 +9,32 @@ serializer_registry = {}
 
 
 class ContentUnitRelatedField(serializers.HyperlinkedRelatedField):
-    def to_representation(self, value):
-        try:
-            serializer = serializer_registry[type(value.cast())]
-            return serializer(instance=value).data
-        except KeyError:
-            # model not in serializer mapping, asplode with a better error
-            # once we write one :)
-            raise
+    """ContentUnit Hyperlinked Related API field that knows to cast unit URLs"""
+    def get_object(self, *args, **kwargs):
+        # return the cast object, not the generic contentunit
+        return super(ContentUnitRelatedField, self).get_object(*args, **kwargs).cast()
+
+    def get_url(self, obj, view_name, *args, **kwargs):
+        # return the url to the cast unit, not the generic unit
+        view_name = '{}-detail'.format(obj.cast()._meta.model_name)
+        return super(ContentUnitRelatedField, self).get_url(obj.cast(), view_name, *args, **kwargs)
 
     class Meta:
         model = models.ContentUnit
 
 
 class RepositorySerializer(serializers.HyperlinkedModelSerializer):
-    units = ContentUnitRelatedField(
-        view_name='contentunit-detail',
-        read_only=True,
-        many=True,
-    )
-
     _href = serializers.HyperlinkedIdentityField(
         view_name='repository-detail',
         lookup_field='repo_id',
     )
 
+    content_unit_counts = serializers.DictField()
+
     class Meta:
         model = models.Repository
+        fields = ('_href', 'content_unit_counts', 'repo_id', 'display_name',
+                  'description', 'last_unit_added', 'last_unit_removed')
 
 
 class ContentUnitSerializer(serializers.HyperlinkedModelSerializer):
@@ -48,9 +47,3 @@ class ContentUnitSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = models.ContentUnit
-
-
-serializer_registry[models.Repository] = RepositorySerializer
-
-# XXX more crappy simulation of entry points
-import pulp_rpm.serializers  # NOQA

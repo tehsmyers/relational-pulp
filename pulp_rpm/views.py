@@ -2,6 +2,7 @@ from pulp.views import ContentUnitViewSet, router
 from pulp_rpm import models, serializers
 
 
+# TODO: Magic trick: autogenerate viewsets by finding contentunit model classes
 class RPMViewSet(ContentUnitViewSet):
     queryset = models.RPM.objects.all()
     serializer_class = serializers.RPMSerializer

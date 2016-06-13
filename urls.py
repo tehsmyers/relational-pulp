@@ -16,7 +16,6 @@ Including another URLconf
 from django.conf.urls import url, include
 
 from pulp import views
-from pulp_rpm import views as rpm_views
 
 urlpatterns = [
     url(r'^api/v3/', include(views.router.urls)),
