@@ -1,3 +1,4 @@
+import hashlib
 import uuid
 from hashlib import sha256
 from collections import namedtuple
@@ -8,8 +9,9 @@ from django.db import models
 from django.db.models import signals
 from django.utils import timezone
 
-from pulp.fields import ChecksumTypeCharField
 from pulp.storage import content_unit_path
+
+Checksum = namedtuple('Checksum', ('algorithm', 'digest'))
 
 
 class UUIDModel(models.Model):
@@ -67,23 +69,6 @@ class Scratchpad(GenericKeyValueStore):
     pass
 
 
-class Checksum(UUIDModel, GenericModel):
-    # I'm not sure if this needs to exist as a generic relation.
-
-    # We seem to have a few models that have checksums associated with them, but it's
-    # possible that the advent of ContentUnitFile (below) we don't really need a
-    # generic "Checksum" that can arbitrarily be related to models.
-
-    # hash max length might be too conservative; it was arbitrarily chosen
-    digest = models.CharField(max_length=63)
-
-    # same thing for hash_method max length, also we could potentially use the
-    # "choices" kwarg here to handle hash type validation for and model that needs
-    # checksums. Input validation/sanitization is *definitely* needed to deal with
-    # e.g. sha1 vs. sha1sum vs. SHA-1 etc...
-    digest_type = ChecksumTypeCharField(max_length=63)
-
-
 class Repository(UUIDModel):
     repo_id = models.CharField(max_length=255, db_index=True, unique=True)
     display_name = models.CharField(max_length=255, blank=True, default='')
@@ -108,9 +93,8 @@ class Repository(UUIDModel):
     # Normally you'd just repo.units.add/.remove, but Django disables this when using
     # a through model, so these are here to help making units a little easier.
     def add_units(self, *units):
-        RepositoryContentUnit.objects.bulk_create(
-            [RepositoryContentUnit(repository=self, content_unit=unit) for unit in units]
-        )
+        for unit in units:
+            RepositoryContentUnit.objects.get_or_create(repository=self, content_unit=unit)
 
     def remove_units(self, *units):
         RepositoryContentUnit.objects.filter(repository=self, content_unit__in=units).delete()
@@ -122,9 +106,15 @@ class Repository(UUIDModel):
             count=models.Count('content_type'))
         return {c['content_type']: c['count'] for c in unit_counts}
 
+    @classmethod
+    def from_repository(cls, repository):
+        # Useless in this class, but handy for proxy subclasses,
+        # e.g. PluginRepositoryProxy.from_repository(repository)
+        return cls.objects.get(pk=repository.pk)
+
 
 class Importer(UUIDModel):
-    repository = models.ForeignKey(Repository)
+    repository = models.ForeignKey(Repository, related_name='importers')
     importer_type_id = models.CharField(max_length=255)
     config = GenericRelation(Config)
     scratchpad = GenericRelation(Scratchpad)
@@ -174,15 +164,18 @@ class ContentUnit(UUIDModel):
     # Tell the default manager to use the cast-aware ContentUnitQuerySet
     objects = ContentUnitManager()
 
+    # stashing this in the db with an index makes it a little faster to check the uniqueness
+    # of a unit's key. Unit keys should be unique across all content units in all plugins.
+    key_digest = models.CharField(max_length=64, db_index=True, unique=True)
+
     NAMED_TUPLE = _ContentUnitNamedTupleDescriptor()
 
     KEY_FIELDS = ['pk']
 
     # Similar to the related methods on Repository
     def add_repos(self, *repos):
-        RepositoryContentUnit.objects.bulk_create(
-            [RepositoryContentUnit(repository=repo, content_unit=self) for repo in repos]
-        )
+        for repo in repos:
+            RepositoryContentUnit.objects.get_or_create(repository=repo, content_unit=self)
 
     def remove_repos(self, *repos):
         RepositoryContentUnit.objects.filter(repository__in=repos, content_unit=self).delete()
@@ -203,10 +196,6 @@ class ContentUnit(UUIDModel):
     def key_dict(self):
         # _asdict is an OrderedDict as of python 3.1
         return self.key_tuple._asdict()
-
-    @property
-    def key_digest(self):
-        return self.hash_key()
 
     def hash_key(self, algorithm=None):
         _hash = algorithm or sha256()
@@ -232,10 +221,16 @@ class ContentUnit(UUIDModel):
         # units of a specific type or types in one or many repositories.
 
         # Creating a type-less content unit is disallowed.
+        # XXX Should probably be handled in a pre-save signal
         if not self.content_type:
             self.content_type = self._get_content_type()
             if self.content_type == ContentUnit._meta.model_name:
                 raise Exception('Do not save ContentUnit instances directly.')
+
+        # Update the stored key digest representing the unit key
+        # XXX Should probably be handled in a pre-save signal
+        self.key_digest = self.hash_key()
+
         # TODO: else clause here that makes sure the content type is known to pulp
         # or some other mechanism to prevent unknown types being saved to the db
         return super(ContentUnit, self).save(*args, **kwargs)
@@ -291,7 +286,7 @@ class ContentUnitFile(UUIDModel):
     # to stash the checksum of the unit file along with the file size name
     unit = models.ForeignKey(ContentUnit, related_name='files')
     content = models.FileField(upload_to=content_unit_path, max_length=255)
-    checksums = GenericRelation(Checksum)
+    downloaded = models.BooleanField(default=False)
 
     # suggested in 1647, but I'm not sure of the value unless the goal is for a quick
     # integrity check to make sure the stored file on-disk has the size that we think
@@ -304,6 +299,66 @@ class ContentUnitFile(UUIDModel):
     # time I'm writing this, at least) isn't well defined, so I'm assuming that it'll
     # be a string of unknown max length, e.g. TextField.
     # origin = models.TextField()
+
+    # hash fields
+    # our hash support is entirely dependent (right now, at least) on what hashlib
+    # supports, so these fields are based on values in hashlib.algorithms_guaranteed,
+    # with max_length based on the hexdigest length of hashes generated by those algos
+    md5 = models.CharField(max_length=32, blank=True, null=True)
+    sha1 = models.CharField(max_length=40, blank=True, null=True)
+    sha256 = models.CharField(max_length=64, blank=True, null=True)
+    sha512 = models.CharField(max_length=128, blank=True, null=True)
+
+    @property
+    def digests(self):
+        # An example interface to get at the digest fields in one place
+        return dict(self._digest_generator())
+
+    @property
+    def best_checksum(self):
+        # "best" is subjective, so this is another example interface for how we might use
+        # the hash fields in a more generic way, in this case by returning on the "best"
+        # hash, where "best" is the longest hash, determined by returning the first digest
+        # tuple in a list sorted by hash length, descending, or None if there's no digest
+        # for this file.
+
+        try:
+            return sorted(self._digest_generator(), key=lambda c: len(c.digest), reverse=True)[0]
+        except IndexError:
+            # No hashes to sort, so the [0] index above exploded
+            return None
+
+    def save(self, *args, **kwargs):
+        # I'm not sure if we want to calculate all possible checksums on a file when saved, but
+        # it's certainly possible to do so. Since the files we get often have checksums associated
+        # with them, this seems like the sort of thing we'd want to do as an optional behavior in
+        # plugin. It's here as another example of fun things we can do with Django.
+        if self.content:
+            hashers = {algo: getattr(hashlib, algo)() for algo in self._hash_field_generator()}
+
+            # this is remarkably inefficient! :)
+            for line in self.content.readlines():
+                for hasher in hashers.values():
+                    hasher.update(line.encode('utf8'))
+
+            for algo, hasher in hashers.items():
+                setattr(self, algo, hasher.hexdigest())
+
+            self.file_size = self.content.size
+
+        super(ContentUnitFile, self).save(*args, **kwargs)
+
+    def _hash_field_generator(self):
+        for field in self._meta.fields:
+            if field.name in hashlib.algorithms_guaranteed:
+                yield field.name
+
+    def _digest_generator(self):
+        # yields Checksum namedtuples for any digest fields that have values
+        for field_name in self._hash_field_generator():
+            field_value = getattr(self, field_name)
+            if field_value:
+                yield Checksum(field_name, field_value)
 
     def __repr__(self):
         return '<{} "{}">'.format(type(self).__name__, self.content.name)
@@ -328,6 +383,7 @@ class RepositoryContentUnit(models.Model):
     class Meta:
         ordering = ['updated']
         get_latest_by = 'updated'
+        unique_together = [('repository', 'content_unit')]
 
 
 def units_changed(repository, action):

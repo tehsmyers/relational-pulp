@@ -7,15 +7,17 @@ from pulp.fields import ChecksumTypeCharField
 from pulp.models import ContentUnit, GenericModel, Repository, UUIDModel
 
 
-class YumRepository(Repository):
+class RPMRepositoryProxy(Repository):
     # Looks like a typed repository, but is just a django proxy model that can be used by
     # yum-specific models as ForeignKey targets without adding a bunch of reverse relations
-    # to generic Repository instances.
+    # to generic Repository instances. This distinction only exists in software; anything
+    # related to this proxy is, at the DB level, still related to Repository
     class Meta:
         proxy = True
 
 
 class Errata(UUIDModel):
+    repository = models.ForeignKey(RPMRepositoryProxy, related_name='errata')
     errata_id = models.CharField(max_length=255)
     # XXX These are StringFields in mongo, but are obviously datetime stamps
     issued = models.DateTimeField()
@@ -101,10 +103,10 @@ class CompsLangpacksMatch(GenericModel):
 
 
 # XXX We could potentially relate all of these Comps children to a Comps container type,
-# but for now they all just relate straight back to a YumRepository, just like they do
+# but for now they all just relate straight back to a RPMRepositoryProxy, just like they do
 # in pulp 2.
 class CompsGroup(UUIDModel):
-    repository = models.ForeignKey(YumRepository)
+    repository = models.ForeignKey(RPMRepositoryProxy)
     group_id = models.CharField(max_length=255)
 
     name = models.CharField(max_length=255)
@@ -122,7 +124,7 @@ class CompsGroup(UUIDModel):
 
 
 class CompsCategory(UUIDModel):
-    repository = models.ForeignKey(YumRepository)
+    repository = models.ForeignKey(RPMRepositoryProxy)
     category_id = models.CharField(max_length=255)
 
     name = models.CharField(max_length=255)
@@ -134,7 +136,7 @@ class CompsCategory(UUIDModel):
 
 
 class CompsEnvironment(UUIDModel):
-    repository = models.ForeignKey(YumRepository)
+    repository = models.ForeignKey(RPMRepositoryProxy)
     environment_id = models.CharField(max_length=255)
 
     name = models.CharField(max_length=255)
@@ -147,7 +149,7 @@ class CompsEnvironment(UUIDModel):
 
 
 class CompsLangpacks(UUIDModel):
-    repository = models.ForeignKey(YumRepository)
+    repository = models.ForeignKey(RPMRepositoryProxy)
     matches = GenericRelation(CompsLangpacksMatch)
 
 
@@ -182,7 +184,7 @@ class YumMetadataFile(ContentUnit):
     # XXX Do we store files with this? If not, can just be a UUIDModel subclass,
     # and FK back to Repository, and either track checksums right on this model
     # or through the Checksum generic relation. For now, this is a ContentUnit,
-    # related to ContentUnitFiles.
+    # related to ContentUnitFiles, which have checksum fields.
     data_type = models.CharField(max_length=255)
 
 
