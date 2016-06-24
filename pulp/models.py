@@ -1,7 +1,7 @@
 import hashlib
 import uuid
 from hashlib import sha256
-from collections import namedtuple
+from collections import abc, namedtuple
 
 from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -31,7 +31,7 @@ class UUIDModel(models.Model):
 
 class GenericModel(models.Model):
     # abstract base that can be added to a model to provide the required fields for generic
-    # relations. Must mixed in with UUIDModel base.
+    # relations. Must mixed in with UUIDModel base and related to other Models with UUIDModel bases.
     # https://docs.djangoproject.com/en/1.8/ref/contrib/contenttypes/#generic-relations
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.UUIDField()
@@ -41,12 +41,55 @@ class GenericModel(models.Model):
         abstract = True
 
 
-class GenericKeyValueStore(UUIDModel, GenericModel):
+class GenericKeyValueMutableMapping(abc.MutableMapping):
+    # Given a GenericKeyValueStore Django Manager, implement the MutableMapping interface to
+    # provide convenient access to the GenericKeyValueStore as a python dict-like object.
+    # For example, Repository has a notes field, so give Repository instance r,
+    # r.notes.mapping['key'] = ['notes value'] will result in database write.
+    # r.notes.mapping['key'] by itself will read from the database
+    def __init__(self, manager):
+        self.manager = manager
+
+    def __getitem__(self, key):
+        return self.manager.get(key=key).value
+
+    def __setitem__(self, key, value):
+        # The underlying field is a textfield, so coerce value to a string before saving
+        value = str(value)
+        try:
+            item = self.manager.get(key=key)
+            item.value = value
+            item.save()
+        except self.manager.model.DoesNotExist:
+            item = self.manager.create(key=key, value=value)
+
+    def __delitem__(self, key):
+        return self.manager.filter(key=key).delete()
+
+    def __iter__(self):
+        return (kv.key for kv in self.manager.all())
+
+    def __len__(self):
+        return self.manager.count() 
+
+    def __repr__(self):
+        return repr(dict(self))
+
+
+class GenericKeyValueManager(models.Manager):
+    # Expose the GenericKeyValueMutableMapping as a Manager attr for use in models
+    @property
+    def mapping(self):
+        return GenericKeyValueMutableMapping(self)
+
+
+class GenericKeyValueStore(GenericModel):
     key = models.CharField(max_length=255)
-    # we need to make this a TextField, and leave migrating its contents to implementers.
-    # That's easy enough when the implementer is pulp itself, but care should be taken to
-    # do as little as possible with these during migration so data isn't lost.
     value = models.TextField()
+
+    # Use the GenericKeyValueManager by default to let anything using a GenericKeyValueStore
+    # have access to the mapping attr
+    objects = GenericKeyValueManager()
 
     class Meta:
         abstract = True
@@ -65,7 +108,7 @@ class Notes(GenericKeyValueStore):
 class Scratchpad(GenericKeyValueStore):
     # Used by pulp internals to store arbitrary k/v data on a model
     # e.g. Used by plugins to store type-specific repo data in lieu
-    # of having typed repos.
+    # of having typed repos. Should be considered "private".
     pass
 
 
@@ -78,7 +121,7 @@ class Repository(UUIDModel):
                                    through='RepositoryContentUnit')
 
     notes = GenericRelation(Notes)
-    scratchpad = GenericRelation(Scratchpad)
+    _scratchpad = GenericRelation(Scratchpad)
 
     # these get populated by signals attached to the units relation
     last_unit_added = models.DateTimeField(blank=True, null=True)
@@ -110,14 +153,23 @@ class Repository(UUIDModel):
     def from_repository(cls, repository):
         # Useless in this class, but handy for proxy subclasses,
         # e.g. PluginRepositoryProxy.from_repository(repository)
-        return cls.objects.get(pk=repository.pk)
+        new_repository = cls()
+        # copy field values to avoid a db hit
+        attrs = [field.attname for field in repository._meta.fields]
+        # also copy instance _state, which includes useful info like which db to write to
+        attrs.append('_state')
+        # copy all the things
+        for attr in attrs:
+            value = getattr(repository, attr)
+            setattr(new_repository, attr, value)
+        return new_repository
 
 
 class Importer(UUIDModel):
     repository = models.ForeignKey(Repository, related_name='importers')
     importer_type_id = models.CharField(max_length=255)
     config = GenericRelation(Config)
-    scratchpad = GenericRelation(Scratchpad)
+    _scratchpad = GenericRelation(Scratchpad)
     last_sync = models.DateTimeField(blank=True, null=True)
 
 
@@ -306,7 +358,9 @@ class ContentUnitFile(UUIDModel):
     # with max_length based on the hexdigest length of hashes generated by those algos
     md5 = models.CharField(max_length=32, blank=True, null=True)
     sha1 = models.CharField(max_length=40, blank=True, null=True)
+    sha224 = models.CharField(max_length=56, blank=True, null=True)
     sha256 = models.CharField(max_length=64, blank=True, null=True)
+    sha384 = models.CharField(max_length=96, blank=True, null=True)
     sha512 = models.CharField(max_length=128, blank=True, null=True)
 
     @property
@@ -384,6 +438,22 @@ class RepositoryContentUnit(models.Model):
         ordering = ['updated']
         get_latest_by = 'updated'
         unique_together = [('repository', 'content_unit')]
+
+
+class DataTypesDemo(models.Model):
+    # basic model to see exactly what datatypes are used by postgres
+    smallint = models.SmallIntegerField()
+    integer = models.IntegerField()
+    bigint = models.BigIntegerField()
+    psmallint = models.PositiveSmallIntegerField()
+    pint = models.PositiveIntegerField()
+    floatfield = models.FloatField()
+    decimal = models.DecimalField(max_digits=5, decimal_places=3)
+    binary = models.BinaryField()
+    dt = models.DateTimeField()
+    d = models.DateField()
+    t = models.TimeField()
+    boolean = models.BooleanField()
 
 
 def units_changed(repository, action):
