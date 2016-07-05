@@ -33,7 +33,8 @@ developers. How the code base gets used depends on that strategy, so at the mome
 Pulp project is little more than a sandbox/testbed for proving the viability of converting Pulp to
 a relational database.
 
-All of the findings documented here are the result of work on the Relational Pulp project, and are subject to change (but hopefully not a lot) as requirements are discovered, clarified, or otherwise
+All of the findings documented here are the result of work on the Relational Pulp project, and are
+subject to change (but hopefully not a lot) as requirements are discovered, clarified, or otherwise
 altered as part of the Pulp 3 development effort.
 
 # Postgres
@@ -59,26 +60,6 @@ https://www.softwarecollections.org/en/scls/rhscl/rh-postgresql94/
     Pulp effort.
 
     https://docs.djangoproject.com/en/dev/ref/contrib/postgres/search/
-
-# Python
-
-**This section has nothing to do with the data model, and should be discussed elsewhere.**
-
-Django and most of its dependencies work well in Python 3. Our last informal audit of Python 3
-compatibility in our dependencies showed that the last major problem was twisted, which has since
-become Python 3 compatible. Specifically, the existence of a python 3.4 SCL with packages for el6
-and el7 makes Python 3.4 the most likely minimum supported version of Python for Pulp 3.
-
-https://www.softwarecollections.org/en/scls/rhscl/rh-python34/
-
-If Python 2.7 support is still necessary for Pulp stakeholders, then compatibility libraries should be
-employed to make Pulp work in both major versions of Python (2 and 3).
-
-    Not all of twisted works in python 3, but the pieces that we use are among those that have been
-    updated to work in both python 2 and 3.
-
-    https://twistedmatrix.com/trac/wiki/Plan/Python3
-    https://twistedmatrix.com/trac/milestone/Python-3.x
 
 # Django
 
@@ -147,7 +128,8 @@ https://docs.djangoproject.com/en/1.8/topics/db/models/#multi-table-inheritance
 
 This is probably the most important Model inheritance mechanism, as it is used to implement the
 ContentUnit "master-detail" relationship, where the "master" content units contain all fields
-common to all (or most) ContentUnits, and the "detail" content units contain all of the type-specific fields for that unit type.
+common to all (or most) ContentUnits, and the "detail" content units contain all of the type-specific
+fields for that unit type.
 
 On the database level, the information representing a ContentUnit resides in at least two database
 tables (the master ContentUnit table and the detail table), and is seamlessly joined by Django on
@@ -167,9 +149,9 @@ More information on this is documented later in the section describing ContentUn
 https://docs.djangoproject.com/en/1.8/topics/db/models/#proxy-models
 https://docs.djangoproject.com/en/1.8/topics/db/queries/#backwards-related-objects
 
-Proxy models have no effect on the database; they have all of the same database state as the models
+Proxy models have no effect on the database. They have all of the same database state as the models
 they proxy back to, only the behavior is changed. Proxy models are a convenient middle ground between
-typed and untyped repositories, and solve a potential namespacing issue:
+typed and untyped repositories, and solve this potential namespacing issue:
 
 When creating relationships between Django models, Django does us a favor, and creates what is known
 as a "reverse relation" on the object bein related *to*. The reverse relation is created on the
@@ -177,7 +159,7 @@ relationship's target model automatically. Creating several models that relate t
 example, will create several of these reverse relations on the Repository model, cluttering its
 namespace. One solution, involving a proxy model, would be to create a plugin-specific
 repository proxy model (e.g. RPMRepositoryProxy for the RPM plugin), and then any Model in the RPM
-plugin that would ForeignKey to Repository targets that proxy model instead instead. The reverse
+plugin that would ForeignKey to Repository targets that proxy model instead. The reverse
 relations will be created on the proxy model, but the "normal" Repository model is unaffected.
 
 Sticking with Repository for another example, an RPMRepositoryProxy also gives us the ability to add
@@ -208,6 +190,11 @@ Postgres. Since MongoEngine started out to get mongodb working as a Django backe
 direct counterparts in Django. The following subsections are the MongoEngine fields currently used in
 Pulp, with applicable postgres datatypes and Django field alternatives listed inside.
 
+In each MongoEngine field section there will be a link to that MongoEngine field's documentation,
+brief information about the corresponding postgres data type, subsections detailing the Django
+field or fields that should be used when translating a given MongoEngine field, and a list of
+files in which that MongoEngine field is being used.
+
 ## Simple Field Types
 
 These field types are directly supported by postgres/Django, and have a clear migration path.
@@ -234,6 +221,16 @@ be used instead."
 The "blank-padded" type mentioned in that quote is the character type, so for our purposes there is no
 difference in performance between varchar and text.
 
+Used in:
+- `pulp_rpm/plugins/pulp_rpm/plugins/db/models.py`
+- `pulp_rpm/plugins/pulp_rpm/plugins/db/fields.py`
+- `pulp_ostree/plugins/pulp_ostree/plugins/db/model.py`
+- `pulp_docker/plugins/pulp_docker/plugins/models.py`
+- `pulp_puppet/pulp_puppet_plugins/pulp_puppet/plugins/db/models.py`
+- `pulp/server/pulp/server/db/model/__init__.py`
+- `pulp/server/pulp/server/db/fields.py`
+- `pulp_python/plugins/pulp_python/plugins/models.py`
+
 #### CharField
 
 https://docs.djangoproject.com/en/1.8/ref/models/fields/#charfield
@@ -252,10 +249,9 @@ Represented by a text field in postgres.
 When the maximum length of a string is unknown, such as when storing large chunks of text like errata
 descriptions/summaries, this is the field to use.
 
-### IntField, LongField
+### IntField
 
 http://docs.mongoengine.org/apireference.html#mongoengine.fields.IntField
-http://docs.mongoengine.org/apireference.html#mongoengine.fields.LongField
 
 There are more numeric types supported by postgres + Django than are offered by MongoEngine,
 so converting from one of these MongoEngine fields to a postgres field should take
@@ -266,6 +262,11 @@ https://www.postgresql.org/docs/current/static/datatype-numeric.html
 
 The only known MongoEngine FloatField in Pulp is a timestamp field on the Distribution document,
 which could reasonably be converted to a DateTimeField.
+
+Used in:
+- `pulp_rpm/plugins/pulp_rpm/plugins/db/models.py`
+- `pulp_docker/plugins/pulp_docker/plugins/models.py`
+- `pulp/server/pulp/server/db/model/__init__.py`
 
 #### IntegerField, SmallIntegerField, BigIntegerField
 
@@ -292,6 +293,9 @@ Also numeric types, just like IntField and LongField, but there are some python 
 when it comes to floats that are available in django fields.
 
 https://www.postgresql.org/docs/current/static/datatype-numeric.html
+
+Used in:
+- `pulp_rpm/plugins/pulp_rpm/plugins/db/models.py`
 
 #### FloatField
 
@@ -323,6 +327,10 @@ A normal BooleanField, represented a True/False value in python.
 
 https://www.postgresql.org/docs/current/static/datatype-boolean.html
 
+Used in:
+- `pulp_rpm/plugins/pulp_rpm/plugins/db/models.py`
+- `pulp/server/pulp/server/db/model/__init__.py`
+
 #### BooleanField, NullBooleanField
 
 Represented by the "boolean" data type in postgres. "BooleanField" stores only True or False,
@@ -340,10 +348,16 @@ http://docs.mongoengine.org/apireference.html#mongoengine.fields.DateTimeField
 All mongoengine DateTimeFields should, at this point, be storing UTC datetime
 stamps, represented in python as "datetime.datetime" instances. UTCDateTimeField and
 ISO8601StringField are custom fields with special behavior for storage, but
-all datetimes should be stored in postgres as postgres's native data type. Any
-custom serialization/deserialization of datetime data should be done at the API layer.
+all datetimes should be stored in postgres as postgres's native data type, so the only
+Django field type we should be using for all of these mongo fields is DateTimeField.
+Custom serialization/deserialization of datetime data should be done at the API layer.
 
 https://www.postgresql.org/docs/current/static/datatype-datetime.html
+
+Used in:
+- `pulp_ostree/plugins/pulp_ostree/plugins/db/model.py`
+- `pulp/server/pulp/server/db/model/__init__.py`
+- `pulp/server/pulp/server/db/fields.py`
 
 #### DateTimeField
 
@@ -356,8 +370,7 @@ UTC timestamps when stored, our custom UTCDateTimeField is not required with Dja
 #### DateField, TimeField
 
 MongoEngine does not provide equivalents for these field types, but they're worth mentioning
-as possible alternatives to DateTimeField in case only a date or time component of a datetime
-object needs to be stored.
+in the event that only a date or time component of a datetime object needs to be stored.
 
 https://docs.djangoproject.com/en/1.8/ref/models/fields/#datefield
 
@@ -374,6 +387,9 @@ Unlike DateTimeField, TimeField appears to be unaware of time zones; the column 
 http://docs.mongoengine.org/apireference.html#mongoengine.fields.UUIDField
 
 UUIDs, represented by instances of the "uuid.UUID" data type.
+
+Used in:
+- `pulp/server/pulp/server/db/model/__init__.py`
 
 #### UUIDField
 
@@ -395,9 +411,12 @@ MongoEngine document. To convert to postgres, the embedded document should be pr
 modeled as a Django Model, or as part of the Django Model that formerly embedded the
 document in MongoEngine.
 
-The only EmbeddedDocumentField in Pulp can be found in the OSTree plugin, as an
+The only EmbeddedDocumentField in Pulp can be found in the Docker plugin, as an
 attribute of the Manifest Document. Its purpose appears to be referential, and can
 most likely be replaced with a standard ForeignKey relationship.
+
+Used in:
+- `pulp_docker/plugins/pulp_docker/plugins/models.py`
 
 ### DynamicField
 
@@ -410,6 +429,9 @@ type must be converted to one of the available Django field types.
 The only DynamicField in Pulp is in the platform TaskStatus Model, as its "result"
 attribute, which will need to be remodeled as part of this transition.
 
+Used in:
+- `pulp/server/pulp/server/db/model/__init__.py`
+
 ### ListField
 
 http://docs.mongoengine.org/apireference.html#mongoengine.fields.ListField
@@ -421,6 +443,12 @@ contained the ListField.
 A sort of case-study regarding converting ListFields to models can be found in the
 "ListField Conversion Example" section of this document.
 
+Used in:
+- `pulp_rpm/plugins/pulp_rpm/plugins/db/models.py`
+- `pulp_docker/plugins/pulp_docker/plugins/models.py`
+- `pulp_puppet/pulp_puppet_plugins/pulp_puppet/plugins/db/models.py`
+- `pulp/server/pulp/server/db/model/__init__.py`
+
 ### DictField
 
 http://docs.mongoengine.org/apireference.html#mongoengine.fields.DictField
@@ -431,22 +459,41 @@ into Django Models that ForeignKey back to the Model that originally contained t
 DictField. For the case of key/value stores, see the "Arbitrary User Data" section
 for details on how to handle that case.
 
+Used in:
+- `pulp_rpm/plugins/pulp_rpm/plugins/db/models.py`
+- `pulp_ostree/plugins/pulp_ostree/plugins/db/model.py`
+- `pulp/server/pulp/server/db/model/__init__.py`
 
-# UUID Primary Keys
-
-Postgres has native support for the UUID datatype, as does Django, making a UUID a viable
-option for primary keys. Most Models in the Relational Pulp sandbox project use UUID Primary Keys,
-but the main motiviation behind using them is that they're already being used at the de-facto Primary
-Key of some of our MongoEngine, most notably including ContentUnit. Given that we *are* using UUID
-Primary Keys already, keeping them when migrating to Postgres makes it so that users integrating with
-Pulp will be able to keep any references they may have in their own data stores to Pulp ContentUnit
-by their ID (UUID).
-
-# ContentUnit Changes
+# ContentUnit Changes and Notes
 
 The primary focus of this initial "Relational Pulp" exploration was to address the relationship
 between Repositories and ContentUnits. The most notable of those changes, generally those not easily
-managed by translating a single field, are outlined here.
+managed by translating a single field, are outlined here along with general notes about specific
+choices that were made along the way.
+
+## UUID Primary Keys
+
+Postgres has native support for the UUID datatype, as does Django, making a UUID a viable option
+for primary keys. UUIDs are already being used at the de-facto Primary Key of the MongoEngine
+ContentUnit. Keeping these UUIDs when migrating to Postgres makes it so that users integrating with
+Pulp will be able to keep any references they may have in their own data stores to Pulp ContentUnit
+by their existing UUID PK.
+
+## Master and Detail ContentUnit Types
+
+The "master" ContentUnit model (ContentUnit itself) has some special behaviors added to accomodate
+the master-detail inheritance implementation. ContentUnit instance have a `cast` method that will
+return a "detail" instance of a ContentUnit type, e.g. the RPM instance for that ContentUnit. Calling
+`cast` on a detail instance will return that instance, making `cast` idempotent.
+
+Similarly, all ContentUnits have a `content_unit` property that, when accessed, will always be the
+master ContentUnit instance. It functions similarly to `cast`, in that it is idempotent. This is a
+property, not a method, because all detail ContentUnit instances are already ContentUnits in an
+object-oriented sense, whereas `cast`ing ContentUnits will most likely result in a database JOIN
+operation.
+
+In general, `cast`ing units should be avoided, and working directly with the detail unit type will
+result in more efficient database operation.
 
 ## ContentUnit vs. Repository Metadata
 
@@ -515,7 +562,8 @@ In Pulp 2, the Errata model has many ListFields associated with it:
 - pkglist, a list of package collections (themselves a list) referred to by this errata
 
 As a result, both "references" and "pkglist" should become their own Model with a corresponding table
-in the database with a ForeignKey relationship back to Errata.  Furthermore, because the "pkglist" element in updateinfo.xml can contains package collections, another Model is needed to represent
+in the database with a ForeignKey relationship back to Errata.  Furthermore, because the "pkglist"
+element in updateinfo.xml can contains package collections, another Model is needed to represent
 those package collections, which then has a ForeignKey relationship back to the pkglist that contains
 it.
 

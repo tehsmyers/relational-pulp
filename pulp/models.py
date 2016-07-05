@@ -70,7 +70,7 @@ class GenericKeyValueMutableMapping(abc.MutableMapping):
         return (kv.key for kv in self.manager.all())
 
     def __len__(self):
-        return self.manager.count() 
+        return self.manager.count()
 
     def __repr__(self):
         return repr(dict(self))
@@ -274,6 +274,9 @@ class ContentUnit(UUIDModel):
 
         # Creating a type-less content unit is disallowed.
         # XXX Should probably be handled in a pre-save signal
+        #     This is also very fragile, and some more work needs to be done to
+        #     ensure that this field is always set, and doesn't change once the
+        #     db record is created.
         if not self.content_type:
             self.content_type = self._get_content_type()
             if self.content_type == ContentUnit._meta.model_name:
@@ -309,7 +312,7 @@ class ContentUnit(UUIDModel):
         try:
             # This field name is hardcoded, but should be derived by inspecting the
             # unit instance to get the name of the contentunit one-to-one reverse
-            # relation
+            # relation, or some other reliable mechanism
             return self.contentunit_ptr
         except AttributeError:
             # No content unit pointer means we're already a ContentUnit
