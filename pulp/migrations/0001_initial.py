@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Config',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('id', models.AutoField(serialize=False, auto_created=True, primary_key=True, verbose_name='ID')),
                 ('object_id', models.UUIDField()),
                 ('key', models.CharField(max_length=255)),
                 ('value', models.TextField()),
@@ -29,9 +29,9 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ContentUnit',
             fields=[
-                ('uuid', models.UUIDField(serialize=False, primary_key=True, default=uuid.uuid4, editable=False)),
+                ('uuid', models.UUIDField(default=uuid.uuid4, serialize=False, primary_key=True, editable=False)),
                 ('content_type', models.CharField(max_length=15)),
-                ('key_digest', models.CharField(db_index=True, unique=True, max_length=64)),
+                ('key_digest', models.CharField(unique=True, max_length=64, db_index=True)),
             ],
             options={
                 'abstract': False,
@@ -40,17 +40,17 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ContentUnitFile',
             fields=[
-                ('uuid', models.UUIDField(serialize=False, primary_key=True, default=uuid.uuid4, editable=False)),
-                ('content', models.FileField(upload_to=pulp.storage.content_unit_path, max_length=255)),
+                ('uuid', models.UUIDField(default=uuid.uuid4, serialize=False, primary_key=True, editable=False)),
+                ('content', models.FileField(max_length=255, upload_to=pulp.storage.content_unit_path)),
                 ('downloaded', models.BooleanField(default=False)),
                 ('file_size', models.BigIntegerField()),
-                ('md5', models.CharField(blank=True, null=True, max_length=32)),
-                ('sha1', models.CharField(blank=True, null=True, max_length=40)),
-                ('sha224', models.CharField(blank=True, null=True, max_length=56)),
-                ('sha256', models.CharField(blank=True, null=True, max_length=64)),
-                ('sha384', models.CharField(blank=True, null=True, max_length=96)),
-                ('sha512', models.CharField(blank=True, null=True, max_length=128)),
-                ('unit', models.ForeignKey(related_name='files', to='pulp.ContentUnit')),
+                ('md5', models.CharField(max_length=32, null=True, blank=True)),
+                ('sha1', models.CharField(max_length=40, null=True, blank=True)),
+                ('sha224', models.CharField(max_length=56, null=True, blank=True)),
+                ('sha256', models.CharField(max_length=64, null=True, blank=True)),
+                ('sha384', models.CharField(max_length=96, null=True, blank=True)),
+                ('sha512', models.CharField(max_length=128, null=True, blank=True)),
+                ('unit', models.ForeignKey(to='pulp.ContentUnit', related_name='files')),
             ],
             options={
                 'abstract': False,
@@ -59,27 +59,30 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='DataTypesDemo',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('uuid', models.UUIDField(default=uuid.uuid4, serialize=False, primary_key=True, editable=False)),
                 ('smallint', models.SmallIntegerField()),
                 ('integer', models.IntegerField()),
                 ('bigint', models.BigIntegerField()),
                 ('psmallint', models.PositiveSmallIntegerField()),
                 ('pint', models.PositiveIntegerField()),
                 ('floatfield', models.FloatField()),
-                ('decimal', models.DecimalField(max_digits=5, decimal_places=3)),
+                ('decimal', models.DecimalField(decimal_places=3, max_digits=5)),
                 ('binary', models.BinaryField()),
                 ('dt', models.DateTimeField()),
                 ('d', models.DateField()),
                 ('t', models.TimeField()),
                 ('boolean', models.BooleanField()),
             ],
+            options={
+                'abstract': False,
+            },
         ),
         migrations.CreateModel(
             name='Importer',
             fields=[
-                ('uuid', models.UUIDField(serialize=False, primary_key=True, default=uuid.uuid4, editable=False)),
+                ('uuid', models.UUIDField(default=uuid.uuid4, serialize=False, primary_key=True, editable=False)),
                 ('importer_type_id', models.CharField(max_length=255)),
-                ('last_sync', models.DateTimeField(blank=True, null=True)),
+                ('last_sync', models.DateTimeField(null=True, blank=True)),
             ],
             options={
                 'abstract': False,
@@ -88,7 +91,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Notes',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('id', models.AutoField(serialize=False, auto_created=True, primary_key=True, verbose_name='ID')),
                 ('object_id', models.UUIDField()),
                 ('key', models.CharField(max_length=255)),
                 ('value', models.TextField()),
@@ -101,12 +104,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Repository',
             fields=[
-                ('uuid', models.UUIDField(serialize=False, primary_key=True, default=uuid.uuid4, editable=False)),
-                ('repo_id', models.CharField(db_index=True, unique=True, max_length=255)),
-                ('display_name', models.CharField(blank=True, default='', max_length=255)),
-                ('description', models.TextField(blank=True, default='')),
-                ('last_unit_added', models.DateTimeField(blank=True, null=True)),
-                ('last_unit_removed', models.DateTimeField(blank=True, null=True)),
+                ('uuid', models.UUIDField(default=uuid.uuid4, serialize=False, primary_key=True, editable=False)),
+                ('slug', models.SlugField(unique=True)),
+                ('display_name', models.CharField(default='', max_length=255, blank=True)),
+                ('description', models.TextField(default='', blank=True)),
+                ('last_unit_added', models.DateTimeField(null=True, blank=True)),
+                ('last_unit_removed', models.DateTimeField(null=True, blank=True)),
             ],
             options={
                 'abstract': False,
@@ -115,21 +118,21 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='RepositoryContentUnit',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('uuid', models.UUIDField(default=uuid.uuid4, serialize=False, primary_key=True, editable=False)),
                 ('created', models.DateTimeField(auto_now_add=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('content_unit', models.ForeignKey(to='pulp.ContentUnit')),
                 ('repository', models.ForeignKey(to='pulp.Repository')),
             ],
             options={
-                'ordering': ['updated'],
                 'get_latest_by': 'updated',
+                'ordering': ['updated'],
             },
         ),
         migrations.CreateModel(
             name='Scratchpad',
             fields=[
-                ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
+                ('id', models.AutoField(serialize=False, auto_created=True, primary_key=True, verbose_name='ID')),
                 ('object_id', models.UUIDField()),
                 ('key', models.CharField(max_length=255)),
                 ('value', models.TextField()),
@@ -142,15 +145,27 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='repository',
             name='units',
-            field=models.ManyToManyField(related_name='repositories', to='pulp.ContentUnit', through='pulp.RepositoryContentUnit'),
+            field=models.ManyToManyField(through='pulp.RepositoryContentUnit', to='pulp.ContentUnit', related_name='repositories'),
         ),
         migrations.AddField(
             model_name='importer',
             name='repository',
-            field=models.ForeignKey(related_name='importers', to='pulp.Repository'),
+            field=models.ForeignKey(to='pulp.Repository', related_name='importers'),
+        ),
+        migrations.AlterUniqueTogether(
+            name='scratchpad',
+            unique_together=set([('key', 'content_type', 'object_id')]),
         ),
         migrations.AlterUniqueTogether(
             name='repositorycontentunit',
             unique_together=set([('repository', 'content_unit')]),
+        ),
+        migrations.AlterUniqueTogether(
+            name='notes',
+            unique_together=set([('key', 'content_type', 'object_id')]),
+        ),
+        migrations.AlterUniqueTogether(
+            name='config',
+            unique_together=set([('key', 'content_type', 'object_id')]),
         ),
     ]

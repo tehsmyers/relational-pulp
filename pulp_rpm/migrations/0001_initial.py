@@ -9,19 +9,29 @@ import uuid
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('contenttypes', '0002_remove_content_type_name'),
         ('pulp', '0001_initial'),
+        ('contenttypes', '0002_remove_content_type_name'),
     ]
 
     operations = [
         migrations.CreateModel(
+            name='Comps',
+            fields=[
+                ('uuid', models.UUIDField(editable=False, primary_key=True, default=uuid.uuid4, serialize=False)),
+            ],
+            options={
+                'abstract': False,
+            },
+        ),
+        migrations.CreateModel(
             name='CompsCategory',
             fields=[
-                ('uuid', models.UUIDField(primary_key=True, editable=False, serialize=False, default=uuid.uuid4)),
-                ('category_id', models.CharField(max_length=255)),
+                ('uuid', models.UUIDField(editable=False, primary_key=True, default=uuid.uuid4, serialize=False)),
+                ('slug', models.SlugField(unique=True)),
                 ('name', models.CharField(max_length=255)),
                 ('description', models.TextField()),
                 ('display_order', models.IntegerField()),
+                ('parent', models.ForeignKey(related_name='categories', to='pulp_rpm.Comps')),
             ],
             options={
                 'abstract': False,
@@ -30,11 +40,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='CompsEnvironment',
             fields=[
-                ('uuid', models.UUIDField(primary_key=True, editable=False, serialize=False, default=uuid.uuid4)),
-                ('environment_id', models.CharField(max_length=255)),
+                ('uuid', models.UUIDField(editable=False, primary_key=True, default=uuid.uuid4, serialize=False)),
+                ('slug', models.SlugField(unique=True)),
                 ('name', models.CharField(max_length=255)),
                 ('description', models.TextField()),
                 ('display_order', models.IntegerField()),
+                ('parent', models.ForeignKey(related_name='environments', to='pulp_rpm.Comps')),
             ],
             options={
                 'abstract': False,
@@ -43,8 +54,8 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='CompsGroup',
             fields=[
-                ('uuid', models.UUIDField(primary_key=True, editable=False, serialize=False, default=uuid.uuid4)),
-                ('group_id', models.CharField(max_length=255)),
+                ('uuid', models.UUIDField(editable=False, primary_key=True, default=uuid.uuid4, serialize=False)),
+                ('slug', models.SlugField(unique=True)),
                 ('name', models.CharField(max_length=255)),
                 ('description', models.TextField()),
                 ('basearchonly', models.NullBooleanField(default=None)),
@@ -52,6 +63,7 @@ class Migration(migrations.Migration):
                 ('display_order', models.IntegerField()),
                 ('user_visible', models.BooleanField(default=False)),
                 ('langonly', models.CharField(max_length=63)),
+                ('parent', models.ForeignKey(related_name='groups', to='pulp_rpm.Comps')),
             ],
             options={
                 'abstract': False,
@@ -60,7 +72,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='CompsGroupID',
             fields=[
-                ('id', models.AutoField(serialize=False, primary_key=True, verbose_name='ID', auto_created=True)),
+                ('id', models.AutoField(verbose_name='ID', primary_key=True, serialize=False, auto_created=True)),
                 ('object_id', models.UUIDField()),
                 ('name', models.CharField(max_length=255)),
                 ('content_type', models.ForeignKey(to='contenttypes.ContentType')),
@@ -72,7 +84,9 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='CompsLangpacks',
             fields=[
-                ('uuid', models.UUIDField(primary_key=True, editable=False, serialize=False, default=uuid.uuid4)),
+                ('uuid', models.UUIDField(editable=False, primary_key=True, default=uuid.uuid4, serialize=False)),
+                ('slug', models.SlugField(unique=True)),
+                ('parent', models.ForeignKey(related_name='langpacks', to='pulp_rpm.Comps')),
             ],
             options={
                 'abstract': False,
@@ -81,11 +95,10 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='CompsLangpacksMatch',
             fields=[
-                ('id', models.AutoField(serialize=False, primary_key=True, verbose_name='ID', auto_created=True)),
-                ('object_id', models.UUIDField()),
+                ('uuid', models.UUIDField(editable=False, primary_key=True, default=uuid.uuid4, serialize=False)),
                 ('name', models.CharField(max_length=255)),
                 ('install', models.CharField(max_length=255)),
-                ('content_type', models.ForeignKey(to='contenttypes.ContentType')),
+                ('langpack', models.ForeignKey(related_name='matches', to='pulp_rpm.CompsLangpacks')),
             ],
             options={
                 'abstract': False,
@@ -94,7 +107,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='CompsOptionGroupID',
             fields=[
-                ('id', models.AutoField(serialize=False, primary_key=True, verbose_name='ID', auto_created=True)),
+                ('id', models.AutoField(verbose_name='ID', primary_key=True, serialize=False, auto_created=True)),
                 ('object_id', models.UUIDField()),
                 ('name', models.CharField(max_length=255)),
                 ('content_type', models.ForeignKey(to='contenttypes.ContentType')),
@@ -106,7 +119,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='CompsPackageReq',
             fields=[
-                ('id', models.AutoField(serialize=False, primary_key=True, verbose_name='ID', auto_created=True)),
+                ('id', models.AutoField(verbose_name='ID', primary_key=True, serialize=False, auto_created=True)),
                 ('object_id', models.UUIDField()),
                 ('name', models.CharField(max_length=255)),
                 ('type', models.CharField(max_length=63)),
@@ -119,7 +132,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='CompsTranslatedDescription',
             fields=[
-                ('id', models.AutoField(serialize=False, primary_key=True, verbose_name='ID', auto_created=True)),
+                ('id', models.AutoField(verbose_name='ID', primary_key=True, serialize=False, auto_created=True)),
                 ('object_id', models.UUIDField()),
                 ('lang', models.CharField(max_length=63)),
                 ('value', models.CharField(max_length=255)),
@@ -132,7 +145,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='CompsTranslatedName',
             fields=[
-                ('id', models.AutoField(serialize=False, primary_key=True, verbose_name='ID', auto_created=True)),
+                ('id', models.AutoField(verbose_name='ID', primary_key=True, serialize=False, auto_created=True)),
                 ('object_id', models.UUIDField()),
                 ('lang', models.CharField(max_length=63)),
                 ('value', models.CharField(max_length=255)),
@@ -145,10 +158,10 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Distribution',
             fields=[
-                ('contentunit_ptr', models.OneToOneField(parent_link=True, primary_key=True, auto_created=True, to='pulp.ContentUnit', serialize=False)),
-                ('distribution_id', models.CharField(max_length=255)),
+                ('contentunit_ptr', models.OneToOneField(to='pulp.ContentUnit', auto_created=True, primary_key=True, serialize=False, parent_link=True)),
+                ('slug', models.SlugField(unique=True)),
                 ('family', models.CharField(max_length=255)),
-                ('variant', models.CharField(blank=True, max_length=255)),
+                ('variant', models.CharField(max_length=255, blank=True)),
                 ('version', models.CharField(max_length=255)),
                 ('arch', models.CharField(max_length=255)),
                 ('timestamp', models.FloatField()),
@@ -157,12 +170,12 @@ class Migration(migrations.Migration):
             options={
                 'abstract': False,
             },
-            bases=('pulp.contentunit',),
+            bases=('pulp.contentunit', models.Model),
         ),
         migrations.CreateModel(
             name='DRPM',
             fields=[
-                ('contentunit_ptr', models.OneToOneField(parent_link=True, primary_key=True, auto_created=True, to='pulp.ContentUnit', serialize=False)),
+                ('contentunit_ptr', models.OneToOneField(to='pulp.ContentUnit', auto_created=True, primary_key=True, serialize=False, parent_link=True)),
                 ('version', models.CharField(max_length=63)),
                 ('release', models.CharField(max_length=63)),
                 ('checksum', models.CharField(max_length=255)),
@@ -178,8 +191,8 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Errata',
             fields=[
-                ('uuid', models.UUIDField(primary_key=True, editable=False, serialize=False, default=uuid.uuid4)),
-                ('errata_id', models.CharField(max_length=255)),
+                ('uuid', models.UUIDField(editable=False, primary_key=True, default=uuid.uuid4, serialize=False)),
+                ('slug', models.SlugField(unique=True)),
                 ('issued', models.DateTimeField()),
                 ('updated', models.DateTimeField()),
                 ('description', models.TextField()),
@@ -202,10 +215,10 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ErrataCollection',
             fields=[
-                ('uuid', models.UUIDField(primary_key=True, editable=False, serialize=False, default=uuid.uuid4)),
+                ('uuid', models.UUIDField(editable=False, primary_key=True, default=uuid.uuid4, serialize=False)),
                 ('short', models.CharField(max_length=255)),
                 ('name', models.CharField(max_length=255)),
-                ('errata', models.ForeignKey(to='pulp_rpm.Errata', related_name='pkglist')),
+                ('errata', models.ForeignKey(related_name='pkglist', to='pulp_rpm.Errata')),
             ],
             options={
                 'abstract': False,
@@ -214,7 +227,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ErrataPackage',
             fields=[
-                ('uuid', models.UUIDField(primary_key=True, editable=False, serialize=False, default=uuid.uuid4)),
+                ('uuid', models.UUIDField(editable=False, primary_key=True, default=uuid.uuid4, serialize=False)),
                 ('name', models.CharField(max_length=255)),
                 ('epoch', models.CharField(max_length=255)),
                 ('version', models.CharField(max_length=255)),
@@ -222,8 +235,9 @@ class Migration(migrations.Migration):
                 ('arch', models.CharField(max_length=255)),
                 ('src', models.CharField(max_length=255)),
                 ('filename', models.CharField(max_length=255)),
-                ('digest', models.CharField(max_length=255)),
-                ('collection', models.ForeignKey(to='pulp_rpm.ErrataCollection', related_name='packages')),
+                ('sum', models.CharField(max_length=255)),
+                ('sum_type', models.CharField(max_length=255)),
+                ('collection', models.ForeignKey(related_name='packages', to='pulp_rpm.ErrataCollection')),
             ],
             options={
                 'abstract': False,
@@ -232,12 +246,27 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ErrataReference',
             fields=[
-                ('uuid', models.UUIDField(primary_key=True, editable=False, serialize=False, default=uuid.uuid4)),
-                ('href', models.CharField(max_length=255)),
-                ('title', models.CharField(max_length=255)),
+                ('id', models.AutoField(verbose_name='ID', primary_key=True, serialize=False, auto_created=True)),
+                ('object_id', models.UUIDField()),
+                ('key', models.CharField(max_length=255)),
+                ('value', models.TextField()),
+                ('href', models.TextField()),
                 ('type', models.CharField(max_length=63)),
-                ('id', models.CharField(max_length=63)),
-                ('errata', models.ForeignKey(to='pulp_rpm.Errata', related_name='references')),
+                ('content_type', models.ForeignKey(to='contenttypes.ContentType')),
+                ('errata', models.ForeignKey(related_name='references', to='pulp_rpm.Errata')),
+            ],
+            options={
+                'abstract': False,
+            },
+        ),
+        migrations.CreateModel(
+            name='ErrataReferenceAttributes',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', primary_key=True, serialize=False, auto_created=True)),
+                ('object_id', models.UUIDField()),
+                ('key', models.CharField(max_length=255)),
+                ('value', models.TextField()),
+                ('content_type', models.ForeignKey(to='contenttypes.ContentType')),
             ],
             options={
                 'abstract': False,
@@ -246,7 +275,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ISO',
             fields=[
-                ('contentunit_ptr', models.OneToOneField(parent_link=True, primary_key=True, auto_created=True, to='pulp.ContentUnit', serialize=False)),
+                ('contentunit_ptr', models.OneToOneField(to='pulp.ContentUnit', auto_created=True, primary_key=True, serialize=False, parent_link=True)),
                 ('name', models.CharField(max_length=255)),
             ],
             options={
@@ -257,7 +286,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='RPM',
             fields=[
-                ('contentunit_ptr', models.OneToOneField(parent_link=True, primary_key=True, auto_created=True, to='pulp.ContentUnit', serialize=False)),
+                ('contentunit_ptr', models.OneToOneField(to='pulp.ContentUnit', auto_created=True, primary_key=True, serialize=False, parent_link=True)),
                 ('version', models.CharField(max_length=63)),
                 ('release', models.CharField(max_length=63)),
                 ('checksum', models.CharField(max_length=255)),
@@ -276,7 +305,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='SRPM',
             fields=[
-                ('contentunit_ptr', models.OneToOneField(parent_link=True, primary_key=True, auto_created=True, to='pulp.ContentUnit', serialize=False)),
+                ('contentunit_ptr', models.OneToOneField(to='pulp.ContentUnit', auto_created=True, primary_key=True, serialize=False, parent_link=True)),
                 ('version', models.CharField(max_length=63)),
                 ('release', models.CharField(max_length=63)),
                 ('checksum', models.CharField(max_length=255)),
@@ -295,7 +324,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='YumMetadataFile',
             fields=[
-                ('contentunit_ptr', models.OneToOneField(parent_link=True, primary_key=True, auto_created=True, to='pulp.ContentUnit', serialize=False)),
+                ('contentunit_ptr', models.OneToOneField(to='pulp.ContentUnit', auto_created=True, primary_key=True, serialize=False, parent_link=True)),
                 ('data_type', models.CharField(max_length=255)),
             ],
             options={
@@ -315,26 +344,19 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='errata',
             name='repository',
-            field=models.ForeignKey(to='pulp_rpm.RPMRepositoryProxy', related_name='errata'),
+            field=models.ForeignKey(related_name='errata', to='pulp_rpm.RPMRepositoryProxy'),
         ),
         migrations.AddField(
-            model_name='compslangpacks',
+            model_name='comps',
             name='repository',
-            field=models.ForeignKey(to='pulp_rpm.RPMRepositoryProxy'),
+            field=models.OneToOneField(related_name='comps', to='pulp_rpm.RPMRepositoryProxy'),
         ),
-        migrations.AddField(
-            model_name='compsgroup',
-            name='repository',
-            field=models.ForeignKey(to='pulp_rpm.RPMRepositoryProxy'),
+        migrations.AlterUniqueTogether(
+            name='erratareferenceattributes',
+            unique_together=set([('key', 'content_type', 'object_id')]),
         ),
-        migrations.AddField(
-            model_name='compsenvironment',
-            name='repository',
-            field=models.ForeignKey(to='pulp_rpm.RPMRepositoryProxy'),
-        ),
-        migrations.AddField(
-            model_name='compscategory',
-            name='repository',
-            field=models.ForeignKey(to='pulp_rpm.RPMRepositoryProxy'),
+        migrations.AlterUniqueTogether(
+            name='erratareference',
+            unique_together=set([('key', 'content_type', 'object_id')]),
         ),
     ]

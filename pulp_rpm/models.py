@@ -4,7 +4,8 @@ from django.db import models
 from django.contrib.contenttypes.fields import GenericRelation
 
 from pulp.fields import ChecksumTypeCharField
-from pulp.models import ContentUnit, GenericModel, Repository, UUIDModel
+from pulp.models import (UUIDModel, Slugged, Repository, ContentUnit,
+                         NamedTupleDescriptor, GenericModel, GenericKeyValueStore)
 
 
 class RPMRepositoryProxy(Repository):
@@ -16,9 +17,10 @@ class RPMRepositoryProxy(Repository):
         proxy = True
 
 
-class Errata(UUIDModel):
+class Errata(UUIDModel, Slugged):
+    # slug (formerly errata_id) should be the "id" field in updateinfo.xml
     repository = models.ForeignKey(RPMRepositoryProxy, related_name='errata')
-    errata_id = models.CharField(max_length=255)
+
     # XXX These are StringFields in mongo, but are obviously datetime stamps
     issued = models.DateTimeField()
     updated = models.DateTimeField()
@@ -37,12 +39,20 @@ class Errata(UUIDModel):
     title = models.CharField(max_length=255)
 
 
-class ErrataReference(UUIDModel):
+class ErrataReferenceAttributes(GenericKeyValueStore):
+    # Used by ErrataReference to store XML attributes that are
+    # specific to different errata reference types
+    pass
+
+
+class ErrataReference(GenericKeyValueStore):
+    # The possible attrs on errata references might be well-defined, in which case we should
+    # model it out. Looking at a RHEL errata, all references have an href and a type, which
+    # are modeled here, with the rest of the attrs living in a generic key value store.
     errata = models.ForeignKey(Errata, related_name='references')
-    href = models.CharField(max_length=255)
-    title = models.CharField(max_length=255)
+    href = models.TextField()
     type = models.CharField(max_length=63)
-    id = models.CharField(max_length=63)
+    attrs = GenericRelation(ErrataReferenceAttributes)
 
 
 class ErrataCollection(UUIDModel):
@@ -62,8 +72,11 @@ class ErrataPackage(UUIDModel):
     arch = models.CharField(max_length=255)
     src = models.CharField(max_length=255)
     filename = models.CharField(max_length=255)
-    # renamed sum to digest to avoid conflicting with builtin 'sum' and to match checksum model
-    digest = models.CharField(max_length=255)
+
+    # It might be worth having a generic Checksum model if we've got a lot of models with these
+    # fields.  # For now, these are explicitly defined here with names based on updateinfo.xml
+    sum = models.CharField(max_length=255)
+    sum_type = models.CharField(max_length=255)
 
 
 # XXX Something that knows the comps stuff we should definitely double check this.
@@ -74,40 +87,40 @@ class CompsPackageReq(GenericModel):
     type = models.CharField(max_length=63)
 
 
+# CompsGroupId and CompsOptionGroupId could potentially be the same model if we added an "optional"
+# boolean, but it's probably easier to put them in separate tables and be explicit about it. A lot
+# of common fields across these different types mean there are opportunities to DRY things up.
 class CompsGroupID(GenericModel):
-    # for groupid elements in grouplists
+    # for groupid elements in grouplists - seen in group, category, and environment
     name = models.CharField(max_length=255)
 
 
 class CompsOptionGroupID(GenericModel):
-    # for groupid elements in optionlists
+    # for groupid elements in optionlists - seen in group, environment, possible category
     name = models.CharField(max_length=255)
 
 
 class CompsTranslatedName(GenericModel):
-    # for storing name fields with "xml:lang" attrs
+    # for storing name with "xml:lang" attrs - seen in group, category, and environment
     lang = models.CharField(max_length=63)
     value = models.CharField(max_length=255)
 
 
 class CompsTranslatedDescription(GenericModel):
-    # for storing description fields with "xml:lang" attrs
+    # for storing description with "xml:lang" attrs - seen in group, category, and environment
     lang = models.CharField(max_length=63)
     value = models.CharField(max_length=255)
 
 
-class CompsLangpacksMatch(GenericModel):
-    # match element in a langpacks entry
-    name = models.CharField(max_length=255)
-    install = models.CharField(max_length=255)
+class Comps(UUIDModel):
+    # stash all the top-level comps attrs on a single object so that
+    # the interface lines up with the actual comps structure
+    repository = models.OneToOneField(RPMRepositoryProxy, related_name='comps')
 
 
-# XXX We could potentially relate all of these Comps children to a Comps container type,
-# but for now they all just relate straight back to a RPMRepositoryProxy, just like they do
-# in pulp 2.
-class CompsGroup(UUIDModel):
-    repository = models.ForeignKey(RPMRepositoryProxy)
-    group_id = models.CharField(max_length=255)
+class CompsGroup(UUIDModel, Slugged):
+    # slug should be the 'id' XML tag value for this group element
+    parent = models.ForeignKey(Comps, related_name='groups')
 
     name = models.CharField(max_length=255)
     packagelist = GenericRelation(CompsPackageReq)
@@ -123,9 +136,9 @@ class CompsGroup(UUIDModel):
     langonly = models.CharField(max_length=63)
 
 
-class CompsCategory(UUIDModel):
-    repository = models.ForeignKey(RPMRepositoryProxy)
-    category_id = models.CharField(max_length=255)
+class CompsCategory(UUIDModel, Slugged):
+    # slug should be the 'id' XML tag value for this category element
+    parent = models.ForeignKey(Comps, related_name='categories')
 
     name = models.CharField(max_length=255)
     description = models.TextField()
@@ -135,9 +148,9 @@ class CompsCategory(UUIDModel):
     grouplist = GenericRelation(CompsGroupID)
 
 
-class CompsEnvironment(UUIDModel):
-    repository = models.ForeignKey(RPMRepositoryProxy)
-    environment_id = models.CharField(max_length=255)
+class CompsEnvironment(UUIDModel, Slugged):
+    # slug should be the 'id' XML tag value for this environment element
+    parent = models.ForeignKey(Comps, related_name='environments')
 
     name = models.CharField(max_length=255)
     grouplist = GenericRelation(CompsGroupID)
@@ -148,18 +161,26 @@ class CompsEnvironment(UUIDModel):
     translated_description = GenericRelation(CompsTranslatedDescription)
 
 
-class CompsLangpacks(UUIDModel):
-    repository = models.ForeignKey(RPMRepositoryProxy)
-    matches = GenericRelation(CompsLangpacksMatch)
+class CompsLangpacks(UUIDModel, Slugged):
+    # slug should be the 'id' XML tag value for this langpacks element
+    parent = models.ForeignKey(Comps, related_name='langpacks')
 
 
-class Distribution(ContentUnit):
-    # The pulp 2 model for this has a pretty ig disclaimer about how the Distribution model
+class CompsLangpacksMatch(UUIDModel):
+    # match element in a langpacks entry
+    langpack = models.ForeignKey(CompsLangpacks, related_name='matches')
+    name = models.CharField(max_length=255)
+    install = models.CharField(max_length=255)
+
+
+class Distribution(ContentUnit, Slugged):
+    # The pulp 2 model for this has a pretty big disclaimer about how the Distribution model
     # should be rewritten. This doesn't attempt that at all, instead it just brings
     # Distribution over as a normal ContentUnit with the same fields. Note that the "files"
     # field is missing now that all ContentUnit instance can relate to zero or more files.
+    # slug field is 'distribution_id' in Mongo, weakly indicating that it might not actually
+    # be a content unit from a data modeling perspective.
     # Also, all of these lengths are probably ridiculous.
-    distribution_id = models.CharField(max_length=255)
     family = models.CharField(max_length=255)
     variant = models.CharField(max_length=255, blank=True)
     version = models.CharField(max_length=255)
@@ -230,6 +251,13 @@ class RPMBase(PackageBase):
     name = models.CharField(max_length=127)
     epoch = models.CharField(max_length=63)
     arch = models.CharField(max_length=63)
+
+    NEVRA_TUPLE = NamedTupleDescriptor('NEVRA_FIELDS', 'NevraTuple')
+
+    @property
+    def nevra_tuple(self):
+        values = (getattr(self, field) for field in self.NEVRA_FIELDS)
+        return self.NEVRA_TUPLE._make(values)
 
     class Meta:
         abstract = True

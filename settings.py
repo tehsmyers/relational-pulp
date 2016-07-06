@@ -41,13 +41,13 @@ INSTALLED_APPS = [
     # third-party
     'rest_framework',
     # pulp
-    'pulp',
+    'pulp.apps.PulpConfig',
 ]
 
 # This list would normally come in via entry points, but for this
 # demo project it's sufficient just to show adding plugins conditionally
 # to Django's installed apps when settings is imported.
-PULP_PLUGINS = ['pulp_rpm']
+PULP_PLUGINS = ['pulp_rpm.apps.PulpRpmConfig']
 for plugin in PULP_PLUGINS:
     # since the actual list of plugins would come from entry points, we
     # don't really need to do much validation here, just add the

@@ -17,8 +17,8 @@ to_create[rpm.RPM] = 100
 
 
 def populate_repository(model, i):
-    repo_name = coolname.generate_slug(2)
-    repo, created = platform.Repository.objects.get_or_create(repo_id=repo_name)
+    slug = coolname.generate_slug(2)
+    repo, created = platform.Repository.objects.get_or_create(slug=slug)
     return repo
 
 
@@ -64,5 +64,5 @@ for model, num_to_create in to_create.items():
     bar.finish()
 
 # This bit is special: Associate all rpms with the first repo,
-# for max relational query fun
+# for maximum relational query fun
 globals()['repository0'].add_units(*rpm.RPM.objects.all())

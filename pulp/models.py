@@ -29,9 +29,22 @@ class UUIDModel(models.Model):
         abstract = True
 
 
+class Slugged(models.Model):
+    # For models that have a "slug" string field that can be used by users to uniquely identify
+    # them, # more "friendly" than using the UUID PK, handy for generating API URLs. We likely want
+    # to come up # with a model interface that makes it easy to implement a slugfield value
+    # generation function so it's easy to customize from model to model.
+
+    # default max_length is 50, which is probably reasonable, but if not, we can change it...
+    slug = models.SlugField(unique=True, db_index=True)
+
+    class Meta:
+        abstract = True
+
+
 class GenericModel(models.Model):
     # abstract base that can be added to a model to provide the required fields for generic
-    # relations. Must mixed in with UUIDModel base and related to other Models with UUIDModel bases.
+    # relations. Must be related to Models with UUIDModel bases using GenericRelation.
     # https://docs.djangoproject.com/en/1.8/ref/contrib/contenttypes/#generic-relations
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.UUIDField()
@@ -44,9 +57,13 @@ class GenericModel(models.Model):
 class GenericKeyValueMutableMapping(abc.MutableMapping):
     # Given a GenericKeyValueStore Django Manager, implement the MutableMapping interface to
     # provide convenient access to the GenericKeyValueStore as a python dict-like object.
-    # For example, Repository has a notes field, so give Repository instance r,
-    # r.notes.mapping['key'] = ['notes value'] will result in database write.
+    # For example, Repository has a notes field, so given Repository instance r,
+    # r.notes.mapping['key'] = 'notes value' will result in database write.
     # r.notes.mapping['key'] by itself will read from the database
+    # del(r.notes.mapping['key']) will delete the corresponding db entities
+    # __len__ falls back to the manager's count method rather than evaluating the queryset iterable
+    # __iter__ returns a generator of keys (like dict does)
+    # __repr__ includes the model name, and falls back to dict.__repr__ for the contents
     def __init__(self, manager):
         self.manager = manager
 
@@ -54,8 +71,7 @@ class GenericKeyValueMutableMapping(abc.MutableMapping):
         return self.manager.get(key=key).value
 
     def __setitem__(self, key, value):
-        # The underlying field is a textfield, so coerce value to a string before saving
-        value = str(value)
+        # The underlying field is a textfield, so the value will be coerced to str when saved
         try:
             item = self.manager.get(key=key)
             item.value = value
@@ -73,7 +89,7 @@ class GenericKeyValueMutableMapping(abc.MutableMapping):
         return self.manager.count()
 
     def __repr__(self):
-        return repr(dict(self))
+        return '{}({})'.format(self.manager.model._meta.object_name, repr(dict(self)))
 
 
 class GenericKeyValueManager(models.Manager):
@@ -93,6 +109,7 @@ class GenericKeyValueStore(GenericModel):
 
     class Meta:
         abstract = True
+        unique_together = ('key', 'content_type', 'object_id')
 
 
 class Config(GenericKeyValueStore):
@@ -112,8 +129,8 @@ class Scratchpad(GenericKeyValueStore):
     pass
 
 
-class Repository(UUIDModel):
-    repo_id = models.CharField(max_length=255, db_index=True, unique=True)
+class Repository(UUIDModel, Slugged):
+    # Mongo repo_id goes in the slug field
     display_name = models.CharField(max_length=255, blank=True, default='')
     description = models.TextField(blank=True, default='')
 
@@ -128,7 +145,7 @@ class Repository(UUIDModel):
     last_unit_removed = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
-        return self.repo_id
+        return self.slug
 
     def __repr__(self):
         return '<{} "{}">'.format(type(self).__name__, str(self))
@@ -183,8 +200,8 @@ class ContentUnitQuerySet(models.QuerySet):
 ContentUnitManager = models.Manager.from_queryset(ContentUnitQuerySet)
 
 
-class _ContentUnitNamedTupleDescriptor:
-    """A descriptor used to dynamically generate and cache the namedtuple type for a ContentUnit
+class NamedTupleDescriptor:
+    """A descriptor used to dynamically generate and cache the namedtuple type for a class
 
     The generated namedtuple is cached, keyed to the class for which it was generated, so
     this property will return the same namedtuple for each class that inherits an instance
@@ -196,17 +213,26 @@ class _ContentUnitNamedTupleDescriptor:
     effectively making this a lazily-evaluated read-only class property.
 
     """
-    _cache = {}
+    # XXX This is a generic version of ContentUnitNamedTupleDescriptor,
+    #     and shouldn't live in models.py
+
+    def __init__(self, classattr, name=None):
+        self.classattr = classattr
+        self.cache = {}
+        self.name = name or type(self).__name__
 
     def __get__(self, obj, cls):
-        if cls not in self._cache:
-            self._cache[cls] = namedtuple(cls._get_content_type(), cls.KEY_FIELDS)
-        return self._cache[cls]
+        if cls not in self.cache:
+            name = cls.__name__ + self.name
+            value = getattr(obj, self.classattr)
+            self.cache[cls] = namedtuple(name, value)
+        return self.cache[cls]
 
 
 # ContentUnit is the "master" model for all content units, and tracks
 # the content unit repository relationships as well as the content unit
-# type, which is derived from its implementing subclass.
+# type, which is derived from its implementing subclass. For now, the best
+# "slug" we've got for all ContentUnits is the uuid PK, so this is just a UUIDModel.
 class ContentUnit(UUIDModel):
     content_type = models.CharField(max_length=15)
 
@@ -220,7 +246,7 @@ class ContentUnit(UUIDModel):
     # of a unit's key. Unit keys should be unique across all content units in all plugins.
     key_digest = models.CharField(max_length=64, db_index=True, unique=True)
 
-    NAMED_TUPLE = _ContentUnitNamedTupleDescriptor()
+    KEY_TUPLE = NamedTupleDescriptor('KEY_FIELDS', 'KeyTuple')
 
     KEY_FIELDS = ['pk']
 
@@ -235,10 +261,9 @@ class ContentUnit(UUIDModel):
     @property
     def key_tuple(self):
         # All other unit key representations are generated from this property.
-        # ContentUnit does not declare KEY_FIELDS, so instances must be cast before accessing this.
-        self = self.cast()
-        values = (getattr(self, field) for field in self.KEY_FIELDS)
-        return self.NAMED_TUPLE._make(values)
+        obj = self.cast()
+        values = (getattr(obj, field) for field in obj.KEY_FIELDS)
+        return obj.KEY_TUPLE._make(values)
 
     @property
     def key_str(self):
@@ -422,7 +447,7 @@ class ContentUnitFile(UUIDModel):
 
 
 # A through model representing the join table between repos and content units
-class RepositoryContentUnit(models.Model):
+class RepositoryContentUnit(UUIDModel):
     # delete this RCU if either the related repo or contentunit are deleted
     repository = models.ForeignKey('Repository', on_delete=models.CASCADE)
     content_unit = models.ForeignKey('ContentUnit', on_delete=models.CASCADE)
@@ -435,7 +460,7 @@ class RepositoryContentUnit(models.Model):
 
     def __repr__(self):
         return '<{} "{}: {}">'.format(
-            type(self).__name__, self.repository.repo_id, self.content_unit.pk)
+            type(self).__name__, self.repository.slug, self.content_unit.pk)
 
     class Meta:
         ordering = ['updated']
@@ -443,7 +468,7 @@ class RepositoryContentUnit(models.Model):
         unique_together = [('repository', 'content_unit')]
 
 
-class DataTypesDemo(models.Model):
+class DataTypesDemo(UUIDModel):
     # basic model to see exactly what datatypes are used by postgres
     smallint = models.SmallIntegerField()
     integer = models.IntegerField()
