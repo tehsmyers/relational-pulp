@@ -144,6 +144,9 @@ class Repository(UUIDModel, Slugged):
     last_unit_added = models.DateTimeField(blank=True, null=True)
     last_unit_removed = models.DateTimeField(blank=True, null=True)
 
+    class Meta:
+        ordering = ['slug']
+
     def __str__(self):
         return self.slug
 

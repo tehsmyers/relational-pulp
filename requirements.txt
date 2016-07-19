@@ -1,5 +1,9 @@
 Django>=1.8,<1.9
 djangorestframework
 psycopg2
+
+# not actually needed for pulp, but some "quality of life" libs
 ipython
+django-extensions
 coolname
+progress

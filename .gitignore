@@ -14,3 +14,7 @@ Vagrantfile
 
 # content files
 content/
+
+# we want these to be tracked eventually, but as long as we're
+# developing the data model they'll just add commit noise
+*/migrations/*.py

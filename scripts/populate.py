@@ -5,6 +5,7 @@ from collections import OrderedDict
 import coolname
 from django.core.files import File
 from progress.bar import IncrementalBar as Bar
+from progress.spinner import Spinner
 
 from pulp import models as platform
 from pulp_rpm import models as rpm
@@ -25,7 +26,7 @@ def populate_repository(model, i):
 def create_rpm_or_srpm(model, i):
     name = coolname.generate_slug(2)
     unit, created = model.objects.get_or_create(
-        name=name, epoch='epoch', version='version', release='release', arch='arch')
+        name=name, epoch='epoch', version='version', release='release', arch='arch', checksum=i)
     num_repos_added = int(random.random() * to_create[platform.Repository]) + 1
     repos = platform.Repository.objects.all().order_by('?')[:num_repos_added]
     unit.add_repos(*repos)
@@ -47,22 +48,31 @@ def populate_rpm(model, i):
 def populate_srpm(model, i):
     return create_rpm_or_srpm(model, i)
 
-for model, num_to_create in to_create.items():
-    model_name = model._meta.model_name
-    bar = Bar('Creating {}'.format(model_name), max=num_to_create)
-    model_count = model.objects.count()
-    create_f = globals()['populate_{}'.format(model_name)]
+def run():
+    for model, num_to_create in to_create.items():
+        model_name = model._meta.model_name
+        bar = Bar('Creating {}'.format(model_name), max=num_to_create)
+        model_count = model.objects.count()
+        create_f = globals()['populate_{}'.format(model_name)]
 
-    for i in range(num_to_create):
-        ident = '{}{}'.format(model_name, i)
-        if i < model_count:
-            unit = model.objects.all()[i]
-        else:
-            unit = create_f(model, i)
-        globals()[ident] = unit
+        for i in range(num_to_create):
+            ident = '{}{}'.format(model_name, i)
+            if i < model_count:
+                unit = model.objects.all()[i]
+            else:
+                unit = create_f(model, i)
+            globals()[ident] = unit
+            bar.next()
+        bar.finish()
+
+    # This bit is special: Associate all rpms with the first repo,
+    # for maximum relational query fun
+    
+    num_units = platform.ContentUnit.objects.count() 
+    repo = globals()['repository0']
+    bar = Bar('Adding all units to {} repo'.format(repo.slug))
+    bar.max = num_units
+    for unit in platform.ContentUnit.objects.all():
+        repo.add_units(unit)
         bar.next()
     bar.finish()
-
-# This bit is special: Associate all rpms with the first repo,
-# for maximum relational query fun
-globals()['repository0'].add_units(*rpm.RPM.objects.all())

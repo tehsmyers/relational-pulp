@@ -4,7 +4,7 @@ from rest_framework import routers, viewsets
 
 
 class RepositoryViewSet(viewsets.ModelViewSet):
-    lookup_field = 'repo_id'
+    lookup_field = 'slug'
     queryset = models.Repository.objects.all()
     serializer_class = serializers.RepositorySerializer
 

@@ -26,21 +26,21 @@ class ContentUnitRelatedField(serializers.HyperlinkedRelatedField):
 class RepositorySerializer(serializers.HyperlinkedModelSerializer):
     _href = serializers.HyperlinkedIdentityField(
         view_name='repository-detail',
-        lookup_field='repo_id',
+        lookup_field='slug',
     )
 
     content_unit_counts = serializers.DictField()
 
     class Meta:
         model = models.Repository
-        fields = ('_href', 'content_unit_counts', 'repo_id', 'display_name',
+        fields = ('_href', 'content_unit_counts', 'slug', 'display_name',
                   'description', 'last_unit_added', 'last_unit_removed')
 
 
 class ContentUnitSerializer(serializers.HyperlinkedModelSerializer):
     repositories = serializers.HyperlinkedRelatedField(
         view_name='repository-detail',
-        lookup_field='repo_id',
+        lookup_field='slug',
         read_only=True,
         many=True,
     )

@@ -1,11 +1,27 @@
 Getting Started
 ===============
 
-
 Install vagrant, and then `vagrant up`
 
 SSH into the vagrant VM with `vagrant ssh`, switch to the relational-pulp virtualenv and start
 a django shell with `workon rel-pulp` and `python manage.py shell`.
+
+
+DB Management
+=============
+
+Reset the DB
+------------
+
+In vagrant, run the `db-reset.sh` script to populate the DB.
+
+Populate the DB
+---------------
+
+`python manage.py runscript populate`
+
+You can edit `scripts/populate.py` to customize DB population.
+
 
 Fun Queries & Notable Objects
 =============================
@@ -88,18 +104,18 @@ or using a specific final unit type.
 
 This will return all units in a repo:
 ```python
->>> models.ContentUnit.objects.filter(repositories__repo_id='repo0')
+>>> models.ContentUnit.objects.filter(repositories__slug='repo0')
 [<ContentUnit "rpm: rpm0-e-v-r-a">, ... ]
 ```
 It is identical to running these commands:
 ```python
->>> models.Repository.objects.get(repo_id='repo0').units.all()
+>>> models.Repository.objects.get(slug='repo0').units.all()
 >>> repo0.units.all()
 ```
 This will only return rpm-typed units in a repo; since their type is known, there is no need to
 cast() them:
 ```python
->>> models.RPM.objects.filter(repositories__repo_id='repo0')
+>>> models.RPM.objects.filter(repositories__slug='repo0')
 [<RPM "rpm0-e-v-r-a">, ... ]
 ```
 When to query units directly or through a repository relationship is an implementation-specific

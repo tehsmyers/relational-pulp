@@ -9,6 +9,10 @@ class RPMViewSet(ContentUnitViewSet):
 
 
 class SRPMViewSet(ContentUnitViewSet):
+    """This is a test!
+
+    Check out the SRPM API endpoint to see it render this docstring.
+    """
     queryset = models.SRPM.objects.all()
     serializer_class = serializers.SRPMSerializer
 

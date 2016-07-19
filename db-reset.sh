@@ -8,5 +8,4 @@ rm -rf content
 
 python manage.py makemigrations pulp --noinput
 python manage.py makemigrations pulp_rpm --noinput
-
-./db-init.sh
+python manage.py migrate --noinput
