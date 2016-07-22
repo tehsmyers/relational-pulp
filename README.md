@@ -15,6 +15,10 @@ Reset the DB
 
 In vagrant, run the `db-reset.sh` script to populate the DB.
 
+
+Fun Queries & Notable Objects
+=============================
+
 Populate the DB
 ---------------
 
@@ -22,11 +26,14 @@ Populate the DB
 
 You can edit `scripts/populate.py` to customize DB population.
 
-
-Fun Queries & Notable Objects
-=============================
-
-In the python shell, `from populate import *`
+In the python shell:
+```python
+from scripts import populate
+populate.run()
+# populate injects a bunch of stuff into its own namespace when run
+# import those here to get them into your interpreter locals
+from scripts.populate import *
+```
 
 The populate script should be idempotent, and will ensure that the objects created within it exist
 prior to using them in an interpreter. The script creates a few basic Repository and ContentUnit
